@@ -1,0 +1,56 @@
+.user-page {
+    animation: fadeIn 0.4s ease-out;
+}
+
+.customer-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar-mini {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #000;
+    box-shadow: none;
+}
+
+.user-name-bold {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.contact-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.status-pill.active {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+.status-pill.inactive {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
+}
+
+.icon-btn.success:hover {
+    color: var(--success);
+    border-color: var(--success);
+}

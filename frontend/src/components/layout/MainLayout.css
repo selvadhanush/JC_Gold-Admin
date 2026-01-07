@@ -1,0 +1,43 @@
+.layout-container {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--bg-main);
+    transition: var(--transition);
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    /* Prevent overflow issues */
+}
+
+.content-area {
+    padding: 30px;
+    max-width: 1600px;
+    width: 100%;
+    margin: 0 auto;
+    flex: 1;
+    animation: pageFadeIn 0.4s ease-out;
+}
+
+@keyframes pageFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .layout-container.sidebar-open .main-content {
+        filter: blur(4px);
+        pointer-events: none;
+    }
+}
