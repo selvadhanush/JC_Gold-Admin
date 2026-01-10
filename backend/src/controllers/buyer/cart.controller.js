@@ -1,32 +1,57 @@
 const Cart = require('../../models/Cart');
 const CartItem = require('../../models/CartItem');
 const Product = require('../../models/Product');
-const Inventory = require('../../models/Inventory');
 
 // @desc    Get buyer's cart
 // @route   GET /api/v1/buyer/cart
 // @access  Private (Buyer)
 exports.getCart = async (req, res) => {
     try {
-        let cart = await Cart.findOne({ user: req.buyer._id })
-            .populate({
-                path: 'items',
-                populate: {
-                    path: 'product',
-                    select: 'name price images metal purity weight status',
-                },
-            });
+        console.log('=== GET CART ===');
+        console.log('Buyer ID:', req.buyer._id);
+
+        let cart = await Cart.findOne({ user: req.buyer._id });
 
         if (!cart) {
             // Create empty cart if doesn't exist
             cart = await Cart.create({ user: req.buyer._id, items: [], totalAmount: 0 });
+            console.log('Created new empty cart');
+        } else {
+            // HEALING LOGIC: Synchronize any orphaned CartItems
+            // This fixes carts that were broken by previous bugs
+            const allItemsForThisCart = await CartItem.find({ cart: cart._id });
+            const allItemIds = allItemsForThisCart.map(i => i._id.toString());
+
+            // Use updateOne with $set to ensure the array is correct in DB
+            // This is safer than manipulate-and-save
+            await Cart.updateOne(
+                { _id: cart._id },
+                { $set: { items: allItemsForThisCart.map(i => i._id) } }
+            );
+
+            console.log(`Healing cart: Found ${allItemIds.length} items in DB for this cart`);
+
+            // Recalculate total after healing
+            await recalculateCartTotalInternal(cart._id);
         }
+
+        // Now fetch a clean, populated version for response
+        const populatedCart = await Cart.findOne({ user: req.buyer._id }).populate({
+            path: 'items',
+            populate: {
+                path: 'product',
+                select: 'name price images specifications status',
+            },
+        });
+
+        console.log('Cart items count (Post-Healing):', populatedCart.items ? populatedCart.items.length : 0);
 
         res.status(200).json({
             success: true,
-            data: cart,
+            data: populatedCart,
         });
     } catch (error) {
+        console.error('Error in getCart:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Server error',
@@ -40,22 +65,17 @@ exports.getCart = async (req, res) => {
 exports.addToCart = async (req, res) => {
     try {
         const { productId, quantity } = req.body;
+        console.log('=== ADD TO CART ===');
+        console.log('Product ID:', productId);
+        console.log('Quantity:', quantity);
+        console.log('Buyer ID:', req.buyer._id);
 
         // Check if product exists and is active
         const product = await Product.findById(productId);
-        if (!product || product.status !== 'active') {
+        if (!product || product.status !== 'ACTIVE') {
             return res.status(404).json({
                 success: false,
                 message: 'Product not found or not available',
-            });
-        }
-
-        // Check stock availability
-        const inventory = await Inventory.findOne({ product: productId });
-        if (!inventory || inventory.quantity < quantity) {
-            return res.status(400).json({
-                success: false,
-                message: `Only ${inventory?.quantity || 0} items available in stock`,
             });
         }
 
@@ -66,53 +86,54 @@ exports.addToCart = async (req, res) => {
         }
 
         // Check if product already in cart
-        const existingItem = await CartItem.findOne({
+        let cartItem = await CartItem.findOne({
             cart: cart._id,
             product: productId,
         });
 
-        if (existingItem) {
+        if (cartItem) {
             // Update quantity
-            const newQuantity = existingItem.quantity + quantity;
-            
-            if (inventory.quantity < newQuantity) {
-                return res.status(400).json({
-                    success: false,
-                    message: `Only ${inventory.quantity} items available in stock`,
-                });
-            }
-
-            existingItem.quantity = newQuantity;
-            await existingItem.save();
+            cartItem.quantity += quantity;
+            await cartItem.save();
+            console.log('Updated existing item, new quantity:', cartItem.quantity);
         } else {
             // Create new cart item
-            const cartItem = await CartItem.create({
+            cartItem = await CartItem.create({
                 cart: cart._id,
                 product: productId,
                 quantity,
                 priceAtAdd: product.price,
             });
-
-            cart.items.push(cartItem._id);
+            console.log('Created new cart item document:', cartItem._id);
         }
 
-        // Recalculate total
-        await recalculateCartTotal(cart._id);
+        // CRITICAL FIX: Ensure the item ID is in the cart.items array using $addToSet
+        // This bypasses any Mongoose document state issues
+        await Cart.updateOne(
+            { _id: cart._id },
+            { $addToSet: { items: cartItem._id } }
+        );
 
-        // Get updated cart
-        cart = await Cart.findById(cart._id).populate({
+        // Recalculate total
+        await recalculateCartTotalInternal(cart._id);
+
+        // Get updated and populated cart
+        const updatedCart = await Cart.findById(cart._id).populate({
             path: 'items',
             populate: {
                 path: 'product',
             },
         });
 
+        console.log('Final cart items count:', updatedCart.items.length);
+
         res.status(200).json({
             success: true,
             message: 'Product added to cart',
-            data: cart,
+            data: updatedCart,
         });
     } catch (error) {
+        console.error('Error in addToCart:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Server error',
@@ -127,7 +148,7 @@ exports.updateCartItem = async (req, res) => {
     try {
         const { quantity } = req.body;
 
-        const cartItem = await CartItem.findById(req.params.itemId).populate('product');
+        const cartItem = await CartItem.findById(req.params.itemId);
         if (!cartItem) {
             return res.status(404).json({
                 success: false,
@@ -135,32 +156,12 @@ exports.updateCartItem = async (req, res) => {
             });
         }
 
-        // Verify ownership
-        const cart = await Cart.findById(cartItem.cart);
-        if (cart.user.toString() !== req.buyer._id.toString()) {
-            return res.status(403).json({
-                success: false,
-                message: 'Not authorized',
-            });
-        }
-
-        // Check stock
-        const inventory = await Inventory.findOne({ product: cartItem.product._id });
-        if (!inventory || inventory.quantity < quantity) {
-            return res.status(400).json({
-                success: false,
-                message: `Only ${inventory?.quantity || 0} items available in stock`,
-            });
-        }
-
         cartItem.quantity = quantity;
         await cartItem.save();
 
-        // Recalculate total
-        await recalculateCartTotal(cart._id);
+        await recalculateCartTotalInternal(cartItem.cart);
 
-        // Get updated cart
-        const updatedCart = await Cart.findById(cart._id).populate({
+        const updatedCart = await Cart.findById(cartItem.cart).populate({
             path: 'items',
             populate: {
                 path: 'product',
@@ -169,7 +170,6 @@ exports.updateCartItem = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: 'Cart updated',
             data: updatedCart,
         });
     } catch (error) {
@@ -193,27 +193,21 @@ exports.removeFromCart = async (req, res) => {
             });
         }
 
-        // Verify ownership
-        const cart = await Cart.findById(cartItem.cart);
-        if (cart.user.toString() !== req.buyer._id.toString()) {
-            return res.status(403).json({
-                success: false,
-                message: 'Not authorized',
-            });
-        }
+        const cartId = cartItem.cart;
 
-        // Remove from cart items array
-        cart.items = cart.items.filter(item => item.toString() !== cartItem._id.toString());
-        await cart.save();
+        // Remove ID from array
+        await Cart.updateOne(
+            { _id: cartId },
+            { $pull: { items: cartItem._id } }
+        );
 
-        // Delete cart item
+        // Delete document
         await cartItem.deleteOne();
 
         // Recalculate total
-        await recalculateCartTotal(cart._id);
+        await recalculateCartTotalInternal(cartId);
 
-        // Get updated cart
-        const updatedCart = await Cart.findById(cart._id).populate({
+        const updatedCart = await Cart.findById(cartId).populate({
             path: 'items',
             populate: {
                 path: 'product',
@@ -222,7 +216,6 @@ exports.removeFromCart = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: 'Item removed from cart',
             data: updatedCart,
         });
     } catch (error) {
@@ -239,17 +232,9 @@ exports.removeFromCart = async (req, res) => {
 exports.clearCart = async (req, res) => {
     try {
         const cart = await Cart.findOne({ user: req.buyer._id });
-        if (!cart) {
-            return res.status(404).json({
-                success: false,
-                message: 'Cart not found',
-            });
-        }
+        if (!cart) return res.status(404).json({ success: false, message: 'Cart not found' });
 
-        // Delete all cart items
         await CartItem.deleteMany({ cart: cart._id });
-
-        // Clear cart
         cart.items = [];
         cart.totalAmount = 0;
         await cart.save();
@@ -267,18 +252,12 @@ exports.clearCart = async (req, res) => {
     }
 };
 
-// Helper function to recalculate cart total
-async function recalculateCartTotal(cartId) {
-    const cart = await Cart.findById(cartId).populate('items');
-    
+// Enhanced internal recalculate
+async function recalculateCartTotalInternal(cartId) {
+    const items = await CartItem.find({ cart: cartId });
     let total = 0;
-    for (const itemId of cart.items) {
-        const item = await CartItem.findById(itemId);
-        if (item) {
-            total += item.priceAtAdd * item.quantity;
-        }
+    for (const item of items) {
+        total += (item.priceAtAdd || 0) * (item.quantity || 0);
     }
-    
-    cart.totalAmount = total;
-    await cart.save();
+    await Cart.updateOne({ _id: cartId }, { $set: { totalAmount: total } });
 }

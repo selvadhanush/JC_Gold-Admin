@@ -10,6 +10,8 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 if (NODE_ENV === 'development') {
     app.use(morgan('dev'));

@@ -49,15 +49,7 @@ const addressSchema = new mongoose.Schema({
 // Index for faster queries
 addressSchema.index({ user: 1 });
 
-// Ensure only one default address per user
-addressSchema.pre('save', async function(next) {
-    if (this.isDefault) {
-        await this.constructor.updateMany(
-            { user: this.user, _id: { $ne: this._id } },
-            { isDefault: false }
-        );
-    }
-    next();
-});
+// Removed complicated automated hooks that were causing crashes. 
+// Standardized on handling 'isDefault' logic in the controller for stability.
 
 module.exports = mongoose.model('Address', addressSchema);

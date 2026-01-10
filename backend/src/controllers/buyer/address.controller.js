@@ -13,6 +13,7 @@ exports.getAddresses = async (req, res) => {
             data: addresses,
         });
     } catch (error) {
+        console.error('Error in getAddresses:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Server error',
@@ -26,6 +27,18 @@ exports.getAddresses = async (req, res) => {
 exports.addAddress = async (req, res) => {
     try {
         const { fullName, phone, addressLine1, addressLine2, city, state, pincode, isDefault } = req.body;
+
+        console.log('=== ADD ADDRESS ===');
+        console.log('User ID:', req.buyer._id);
+
+        // If this is the first address or explicitly set as default, 
+        // clear other default addresses manually since we removed the model hook
+        if (isDefault) {
+            await Address.updateMany(
+                { user: req.buyer._id },
+                { isDefault: false }
+            );
+        }
 
         const address = await Address.create({
             user: req.buyer._id,
@@ -45,6 +58,16 @@ exports.addAddress = async (req, res) => {
             data: address,
         });
     } catch (error) {
+        console.error('Error in addAddress:', error);
+
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(val => val.message);
+            return res.status(400).json({
+                success: false,
+                message: messages[0] || 'Validation Error',
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: error.message || 'Server error',
@@ -57,6 +80,7 @@ exports.addAddress = async (req, res) => {
 // @access  Private (Buyer)
 exports.updateAddress = async (req, res) => {
     try {
+        const { isDefault } = req.body;
         let address = await Address.findById(req.params.id);
 
         if (!address) {
@@ -74,11 +98,23 @@ exports.updateAddress = async (req, res) => {
             });
         }
 
-        address = await Address.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true, runValidators: true }
-        );
+        // Handle default address logic
+        if (isDefault && !address.isDefault) {
+            await Address.updateMany(
+                { user: req.buyer._id },
+                { isDefault: false }
+            );
+        }
+
+        // Update fields
+        const fields = ['fullName', 'phone', 'addressLine1', 'addressLine2', 'city', 'state', 'pincode', 'isDefault'];
+        fields.forEach(field => {
+            if (req.body[field] !== undefined) {
+                address[field] = req.body[field];
+            }
+        });
+
+        await address.save();
 
         res.status(200).json({
             success: true,
@@ -86,6 +122,16 @@ exports.updateAddress = async (req, res) => {
             data: address,
         });
     } catch (error) {
+        console.error('Error in updateAddress:', error);
+
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(val => val.message);
+            return res.status(400).json({
+                success: false,
+                message: messages[0] || 'Validation Error',
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: error.message || 'Server error',
@@ -107,11 +153,10 @@ exports.deleteAddress = async (req, res) => {
             });
         }
 
-        // Check ownership
         if (address.user.toString() !== req.buyer._id.toString()) {
             return res.status(403).json({
                 success: false,
-                message: 'Not authorized to delete this address',
+                message: 'Not authorized',
             });
         }
 
@@ -143,15 +188,19 @@ exports.setDefaultAddress = async (req, res) => {
             });
         }
 
-        // Check ownership
         if (address.user.toString() !== req.buyer._id.toString()) {
             return res.status(403).json({
                 success: false,
-                message: 'Not authorized to modify this address',
+                message: 'Not authorized',
             });
         }
 
-        // Set this address as default (pre-save hook will unset others)
+        // Clear other defaults
+        await Address.updateMany(
+            { user: req.buyer._id },
+            { isDefault: false }
+        );
+
         address.isDefault = true;
         await address.save();
 
