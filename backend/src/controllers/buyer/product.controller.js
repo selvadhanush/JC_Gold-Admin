@@ -6,10 +6,13 @@ const Category = require('../../models/Category');
 // @access  Public
 exports.getProducts = async (req, res) => {
     try {
-        const { category, search, minPrice, maxPrice, metal, purity, status } = req.query;
+        console.log('=== GET PRODUCTS API CALLED ===');
+        const { category, search, minPrice, maxPrice, metal, purity, isFeatured, limit } = req.query;
+        console.log('Query params:', { category, search, minPrice, maxPrice, metal, purity, isFeatured, limit });
 
         // Build query
-        let query = { status: 'active' }; // Only show active products to buyers
+        let query = { status: 'ACTIVE' }; // Only show active products to buyers
+        console.log('Initial query:', query);
 
         if (category) {
             query.category = category;
@@ -29,16 +32,32 @@ exports.getProducts = async (req, res) => {
         }
 
         if (metal) {
-            query.metal = metal;
+            query['specifications.metalType'] = metal;
         }
 
         if (purity) {
-            query.purity = purity;
+            query['specifications.purity'] = purity;
         }
 
-        const products = await Product.find(query)
+        if (isFeatured === 'true') {
+            query.isFeatured = true;
+        }
+
+        console.log('Final query:', JSON.stringify(query, null, 2));
+
+        let productQuery = Product.find(query)
             .populate('category', 'name')
             .sort('-createdAt');
+
+        if (limit) {
+            productQuery = productQuery.limit(Number(limit));
+        }
+
+        const products = await productQuery;
+        console.log(`Found ${products.length} products`);
+        if (products.length > 0) {
+            console.log('First product:', products[0].name, 'Status:', products[0].status, 'Featured:', products[0].isFeatured);
+        }
 
         res.status(200).json({
             success: true,
@@ -46,6 +65,7 @@ exports.getProducts = async (req, res) => {
             data: products,
         });
     } catch (error) {
+        console.error('Error in getProducts:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Server error',
@@ -69,7 +89,7 @@ exports.getProductById = async (req, res) => {
         }
 
         // Only show active products
-        if (product.status !== 'active') {
+        if (product.status !== 'ACTIVE') {
             return res.status(404).json({
                 success: false,
                 message: 'Product not available',
@@ -93,7 +113,7 @@ exports.getProductById = async (req, res) => {
 // @access  Public
 exports.getCategories = async (req, res) => {
     try {
-        const categories = await Category.find({ status: 'active' }).sort('name');
+        const categories = await Category.find({ isActive: true }).sort('name');
 
         res.status(200).json({
             success: true,

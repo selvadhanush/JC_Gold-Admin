@@ -3,6 +3,7 @@ const OrderItem = require('../../models/OrderItem');
 const Cart = require('../../models/Cart');
 const CartItem = require('../../models/CartItem');
 const Address = require('../../models/Address');
+const Product = require('../../models/Product');
 const Inventory = require('../../models/Inventory');
 const Payment = require('../../models/Payment');
 
@@ -35,24 +36,18 @@ exports.placeOrder = async (req, res) => {
             });
         }
 
-        // Validate stock for all items
-        for (const item of cart.items) {
-            const cartItem = await CartItem.findById(item._id).populate('product');
-            const inventory = await Inventory.findOne({ product: cartItem.product._id });
-            
-            if (!inventory || inventory.quantity < cartItem.quantity) {
-                return res.status(400).json({
-                    success: false,
-                    message: `Insufficient stock for ${cartItem.product.name}`,
-                });
-            }
-        }
+        const subtotal = cart.totalAmount;
+        const taxAmount = subtotal * 0.03;
+        const shippingAmount = 0; // Free shipping as per frontend
+        const totalAmount = subtotal + taxAmount + shippingAmount;
 
         // Create order
         const order = await Order.create({
             user: req.buyer._id,
             orderItems: [],
-            totalAmount: cart.totalAmount,
+            totalAmount,
+            taxAmount,
+            shippingAmount,
             paymentMethod,
             orderStatus: 'PENDING',
             paymentStatus: 'PENDING',
@@ -65,25 +60,19 @@ exports.placeOrder = async (req, res) => {
             },
         });
 
-        // Create order items and update inventory
+        // Create order items
         for (const item of cart.items) {
             const cartItem = await CartItem.findById(item._id).populate('product');
-            
+
             const orderItem = await OrderItem.create({
                 order: order._id,
                 product: cartItem.product._id,
                 quantity: cartItem.quantity,
-                price: cartItem.priceAtAdd,
-                total: cartItem.priceAtAdd * cartItem.quantity,
+                price: cartItem.priceAtAdd || cartItem.product.price,
+                total: (cartItem.priceAtAdd || cartItem.product.price) * cartItem.quantity,
             });
 
             order.orderItems.push(orderItem._id);
-
-            // Reduce inventory
-            await Inventory.findOneAndUpdate(
-                { product: cartItem.product._id },
-                { $inc: { quantity: -cartItem.quantity } }
-            );
         }
 
         await order.save();
@@ -107,6 +96,86 @@ exports.placeOrder = async (req, res) => {
             data: populatedOrder,
         });
     } catch (error) {
+        console.error('Error placing order:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Server error',
+        });
+    }
+};
+
+// @desc    Place direct order (Buy Now)
+// @route   POST /api/v1/buyer/orders/direct
+// @access  Private (Buyer)
+exports.placeDirectOrder = async (req, res) => {
+    try {
+        const { productId, quantity, addressId, paymentMethod } = req.body;
+
+        const product = await Product.findById(productId);
+        if (!product || product.status !== 'ACTIVE') {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found or not available',
+            });
+        }
+
+        const address = await Address.findById(addressId);
+        if (!address || address.user.toString() !== req.buyer._id.toString()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid address',
+            });
+        }
+
+        const subtotal = product.price * quantity;
+        const taxAmount = subtotal * 0.03;
+        const shippingAmount = 0;
+        const totalAmount = subtotal + taxAmount + shippingAmount;
+
+        // Create order
+        const order = await Order.create({
+            user: req.buyer._id,
+            orderItems: [],
+            totalAmount,
+            taxAmount,
+            shippingAmount,
+            paymentMethod,
+            orderStatus: 'PENDING',
+            paymentStatus: 'PENDING',
+            shippingAddress: {
+                street: address.addressLine1 + (address.addressLine2 ? ', ' + address.addressLine2 : ''),
+                city: address.city,
+                state: address.state,
+                zipCode: address.pincode,
+                phoneNumber: address.phone,
+            },
+        });
+
+        // Create order item
+        const orderItem = await OrderItem.create({
+            order: order._id,
+            product: productId,
+            quantity,
+            price: product.price,
+            total: product.price * quantity,
+        });
+
+        order.orderItems.push(orderItem._id);
+        await order.save();
+
+        const populatedOrder = await Order.findById(order._id)
+            .populate({
+                path: 'orderItems',
+                populate: { path: 'product' },
+            });
+
+        res.status(201).json({
+            success: true,
+            message: 'Order placed successfully',
+            data: populatedOrder,
+        });
+    } catch (error) {
+        console.error('Error in direct order:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Server error',
