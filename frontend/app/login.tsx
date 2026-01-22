@@ -44,10 +44,16 @@ export default function Login() {
                     const role = userData.role;
                     switch (role) {
                         case 'SUPER_ADMIN':
-                            router.replace('/dashboard');
+                            router.replace('/Superadmin');
                             break;
                         case 'PRODUCT_ADMIN':
-                            router.replace('/products');
+                            router.replace('/Productadmin');
+                            break;
+                        case 'ORDER_ADMIN':
+                            router.replace('/Orderadmin');
+                            break;
+                        case 'FINANCE_ADMIN':
+                            router.replace('/Financeadmin');
                             break;
                         default:
                             router.replace('/dashboard');
@@ -58,6 +64,22 @@ export default function Login() {
             }
         } catch (err) {
             console.error('Error checking stored session:', err);
+        }
+    };
+
+    const fetchWithTimeout = async (url: string, options: any, timeout = 5000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        try {
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal,
+            });
+            clearTimeout(id);
+            return response;
+        } catch (error) {
+            clearTimeout(id);
+            throw error;
         }
     };
 
@@ -74,7 +96,7 @@ export default function Login() {
             console.log('Checking Credentials...');
 
             // 1. First attempt Admin Login (Multi-Role)
-            const adminResponse = await fetch(API_ENDPOINTS.ADMIN_LOGIN, {
+            const adminResponse = await fetchWithTimeout(API_ENDPOINTS.ADMIN_LOGIN, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
@@ -96,16 +118,16 @@ export default function Login() {
                 // Role-Based Redirection
                 switch (role) {
                     case 'SUPER_ADMIN':
-                        router.replace('/dashboard');
+                        router.replace('/Superadmin');
                         break;
                     case 'PRODUCT_ADMIN':
-                        router.replace('/products');
+                        router.replace('/Productadmin');
                         break;
                     case 'ORDER_ADMIN':
-                        router.replace('/dashboard');
+                        router.replace('/Orderadmin');
                         break;
                     case 'FINANCE_ADMIN':
-                        router.replace('/dashboard');
+                        router.replace('/Financeadmin');
                         break;
                     default:
                         router.replace('/dashboard');
@@ -114,7 +136,7 @@ export default function Login() {
             }
 
             // 2. If not an Admin, attempt Buyer Login
-            const buyerResponse = await fetch(API_ENDPOINTS.BUYER_LOGIN, {
+            const buyerResponse = await fetchWithTimeout(API_ENDPOINTS.BUYER_LOGIN, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
@@ -138,9 +160,13 @@ export default function Login() {
             // 3. If both fail
             setLoading(false);
             setError(buyerData.message || adminData.message || 'Invalid credentials');
-        } catch (err) {
+        } catch (err: any) {
             setLoading(false);
-            setError('Server connection failed. Check your network.');
+            if (err.name === 'AbortError') {
+                setError('Server timed out. Check if server is running.');
+            } else {
+                setError('Server connection failed. Check your network.');
+            }
             console.error('Login Error:', err);
         }
     };

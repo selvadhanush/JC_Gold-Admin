@@ -18,6 +18,7 @@ export default function BuyerDashboard() {
     const [products, setProducts] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [wishlist, setWishlist] = useState<any[]>([]);
+    const [resolvedTickets, setResolvedTickets] = useState<any[]>([]);
     const [productsLoading, setProductsLoading] = useState(true);
 
     const initData = useCallback(async () => {
@@ -27,7 +28,8 @@ export default function BuyerDashboard() {
                 fetchProfile(),
                 fetchProducts(),
                 fetchCategories(),
-                fetchWishlist()
+                fetchWishlist(),
+                fetchResolvedTickets()
             ]);
         } catch (error) {
             console.error('Initialization error:', error);
@@ -92,6 +94,18 @@ export default function BuyerDashboard() {
             const response = await fetch(API_ENDPOINTS.BUYER_PRODUCT_CATEGORIES, { headers });
             const data = await response.json();
             if (data.success) setCategories(data.data);
+        } catch (error) { }
+    };
+
+    const fetchResolvedTickets = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.BUYER_SUPPORT, { headers });
+            const data = await response.json();
+            if (data.success) {
+                const resolved = data.data.filter((t: any) => t.status === 'RESOLVED' || t.status === 'CLOSED');
+                setResolvedTickets(resolved);
+            }
         } catch (error) { }
     };
 
@@ -171,33 +185,45 @@ export default function BuyerDashboard() {
             >
                 <View className="px-6 pb-52">
 
-                    {/* Modern Hero Banner */}
-                    <View className="mt-4 mb-8">
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            className="bg-primary-600 rounded-[32px] overflow-hidden shadow-xl shadow-primary-500/30"
-                        >
-                            <View className="p-4 pb-5">
-                                <View className="bg-white/20 self-start px-3 py-1 rounded-full mb-3">
-                                    <Text className="text-white text-[9px] font-bold uppercase tracking-widest">Seasonal Collection</Text>
-                                </View>
-                                <Text className="text-white text-2xl font-black leading-tight mb-1">Exquisite Gold{'\n'}Craftsmanship</Text>
-                                <Text className="text-white/70 text-[11px] mb-4 max-w-[70%]">Get 5% off on making charges for all necklaces today.</Text>
-                                <View className="flex-row items-center">
-                                    <View className="bg-white px-5 py-2.5 rounded-2xl">
-                                        <Text className="text-primary-600 font-bold text-[10px] uppercase">Discover Now</Text>
-                                    </View>
-                                </View>
-                            </View>
-                            {/* Abstract Shape Overlay */}
-                            <View className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full" />
-                            <View className="absolute right-8 bottom-6 opacity-30">
-                                <Ionicons name="diamond-outline" size={100} color="white" />
-                            </View>
-                        </TouchableOpacity>
-                    </View>
+                    {/* Premium Jewelry Cards Section */}
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-8">
+                        {[
+                            { goldTitle: 'Gold 24K', goldPrice: '7,250', silverTitle: 'Fine Silver', silverPrice: '780', bgColor: 'bg-primary-600', icon: 'diamond-outline' },
+                            { goldTitle: 'Gold 22K', goldPrice: '6,850', silverTitle: 'Sterling Silver', silverPrice: '720', bgColor: 'bg-primary-600', icon: 'sparkles-outline' },
+                            { goldTitle: 'Gold 18K', goldPrice: '5,650', silverTitle: 'Britannia Silver', silverPrice: '760', bgColor: 'bg-primary-600', icon: 'flower-outline' }
+                        ].map((card, idx) => (
+                            <View key={idx} className="mr-4" style={{ width: 300 }}>
+                                <TouchableOpacity activeOpacity={0.8} className={`${card.bgColor} rounded-[32px] overflow-hidden shadow-xl`} style={{ elevation: 8 }}>
+                                    <View className="p-6 pb-8">
+                                        <View className="bg-white/20 self-start px-4 py-1.5 rounded-full mb-4">
+                                            <Text className="text-white text-[8px] font-black uppercase tracking-widest">Premium Rate</Text>
+                                        </View>
 
-                    {/* Brand-Consistent Service Hub */}
+                                        <View className="mb-6">
+                                            <Text className="text-white/80 text-[10px] font-bold mb-1">{card.goldTitle}</Text>
+                                            <Text className="text-white text-3xl font-black leading-tight">₹{card.goldPrice}</Text>
+                                            <Text className="text-white/70 text-[9px] mt-1">Per Gram</Text>
+                                        </View>
+
+                                        <View className="border-t border-white/20 pt-4 mb-6">
+                                            <Text className="text-white/80 text-[10px] font-bold mb-1">{card.silverTitle}</Text>
+                                            <Text className="text-white text-3xl font-black leading-tight">₹{card.silverPrice}</Text>
+                                            <Text className="text-white/70 text-[9px] mt-1">Per Gram</Text>
+                                        </View>
+
+                                        <TouchableOpacity className="bg-white px-6 py-3 rounded-[20px] items-center">
+                                            <Text className="text-primary-600 font-black text-[11px] uppercase tracking-widest">Explore Rates</Text>
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <View className="absolute -right-12 -bottom-12 w-56 h-56 bg-white/10 rounded-full" />
+                                    <View className="absolute right-4 bottom-4 opacity-20">
+                                        <Ionicons name={card.icon as any} size={120} color="white" />
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+                    </ScrollView>
                     <View className="mb-12">
                         <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[4px] mb-6">Concierge Services</Text>
                         <View className="flex-row flex-wrap justify-between">
@@ -225,6 +251,28 @@ export default function BuyerDashboard() {
                             ))}
                         </View>
                     </View>
+
+                    {/* Streamlined Support Alert Notification */}
+                    {resolvedTickets.length > 0 && (
+                        <TouchableOpacity
+                            onPress={() => router.push('/buyer_tickets')}
+                            activeOpacity={0.9}
+                            className="bg-teal-600 rounded-[32px] p-6 mb-12 flex-row items-center justify-between shadow-xl shadow-teal-100"
+                        >
+                            <View className="flex-row items-center flex-1">
+                                <View className="bg-white/20 w-12 h-12 rounded-2xl items-center justify-center mr-4">
+                                    <Ionicons name="notifications-outline" size={24} color="white" />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-white font-black text-lg">Ticket Solved ✨</Text>
+                                    <Text className="text-white/70 text-xs font-medium">Your support request has been updated.</Text>
+                                </View>
+                            </View>
+                            <View className="bg-white px-4 py-2 rounded-xl">
+                                <Text className="text-teal-600 font-black text-[10px] uppercase">View Details</Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
 
                     {/* Vault Preview Section */}
                     {wishlist.length > 0 && (

@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
+    orderNumber: {
+        type: String,
+        unique: true,
+        sparse: true, // Allow null/undefined for existing orders
+    },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -31,8 +36,16 @@ const orderSchema = new mongoose.Schema({
     },
     orderStatus: {
         type: String,
-        enum: ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'],
+        enum: ['PENDING', 'CONFIRMED', 'PACKED', 'SHIPPED', 'DELIVERED', 'CANCELLED'],
         default: 'PENDING',
+    },
+    isFinanceConfirmed: {
+        type: Boolean,
+        default: false,
+    },
+    isPriority: {
+        type: Boolean,
+        default: false,
     },
     shippingAddress: {
         street: String,
@@ -52,5 +65,15 @@ const orderSchema = new mongoose.Schema({
         ref: 'Payment',
     },
 }, { timestamps: true });
+
+// Pre-save hook to generate order number
+orderSchema.pre('save', function () {
+    if (!this.orderNumber) {
+        const date = new Date();
+        const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
+        this.orderNumber = `ORD-${dateStr}-${randomNum}`;
+    }
+});
 
 module.exports = mongoose.model('Order', orderSchema);

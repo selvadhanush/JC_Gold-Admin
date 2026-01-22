@@ -33,6 +33,7 @@ interface Order {
     }>;
     totalAmount: number;
     orderStatus: string;
+    isFinanceConfirmed: boolean;
     createdAt: string;
 }
 
@@ -93,7 +94,9 @@ export default function Orders() {
                     </View>
                     <View className={`${style.bg} px-4 py-2 rounded-2xl flex-row items-center border border-white/50 shadow-sm`}>
                         <Ionicons name={style.icon as any} size={14} color={style.text.replace('text-', '#')} />
-                        <Text className={`ml-2 text-[10px] font-black uppercase tracking-widest ${style.text}`}>{item.orderStatus || 'PENDING'}</Text>
+                        <Text className={`ml-2 text-[10px] font-black uppercase tracking-widest ${style.text}`}>
+                            {item.orderStatus === 'PENDING' && !item.isFinanceConfirmed ? 'Processing By Finance' : (item.orderStatus || 'PENDING')}
+                        </Text>
                     </View>
                 </View>
 
@@ -113,7 +116,7 @@ export default function Orders() {
                     </View>
                     <View className="ml-4 flex-1">
                         <Text className="text-gray-900 font-bold text-sm" numberOfLines={1}>
-                            {item.orderItems[0]?.product?.name} {item.orderItems.length > 1 ? `& ${item.orderItems.length - 1} more` : ''}
+                            {item.orderItems[0]?.product?.name} {item.orderItems[0]?.quantity > 1 ? `(x${item.orderItems[0].quantity})` : ''} {item.orderItems.length > 1 ? `& ${item.orderItems.length - 1} more` : ''}
                         </Text>
                         <Text className="text-gray-400 text-[10px] font-bold mt-1 uppercase tracking-tighter">{formatDate(item.createdAt)}</Text>
                     </View>

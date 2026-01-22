@@ -1,0 +1,101 @@
+﻿node : Γ£ù Failed to 
+load lightningcss
+At line:1 char:1
++ node 
+test-lightningcss.js 
+2>&1 | Out-File 
+-FilePath 
+"test-output.txt" ...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (Γ£ù Fai   
+ led to load ligh    
+tningcss:String)     
+[], RemoteExcep    
+tion
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+Error: Cannot find 
+module '../lightningc
+ss.win32-x64-msvc.nod
+e'
+Require stack:
+- D:\Grow-We-Go\JC_Go
+ld-Admin\frontend\nod
+e_modules\lightningcs
+s\node\index.js
+- D:\Grow-We-Go\JC_Go
+ld-Admin\frontend\tes
+t-lightningcss.js
+Code: 
+MODULE_NOT_FOUND
+
+Full error:
+Error: Cannot find 
+module '../lightningc
+ss.win32-x64-msvc.nod
+e'
+Require stack:
+- D:\Grow-We-Go\JC_Go
+ld-Admin\frontend\nod
+e_modules\lightningcs
+s\node\index.js
+- D:\Grow-We-Go\JC_Go
+ld-Admin\frontend\tes
+t-lightningcss.js
+    at Module._resolv
+eFilename (node:inter
+nal/modules/cjs/loade
+r:1207:15)
+    at Module._load (
+node:internal/modules
+/cjs/loader:1038:27)
+    at 
+Module.require (node:
+internal/modules/cjs/
+loader:1289:19)
+    at require (node:
+internal/modules/help
+ers:182:18)
+    at 
+Object.<anonymous> (D
+:\Grow-We-Go\JC_Gold-
+Admin\frontend\node_m
+odules\lightningcss\n
+ode\index.js:21:22)
+    at 
+Module._compile (node
+:internal/modules/cjs
+/loader:1521:14)
+    at Module._extens
+ions..js (node:intern
+al/modules/cjs/loader
+:1623:10)
+    at Module.load (n
+ode:internal/modules/
+cjs/loader:1266:32)
+    at Module._load (
+node:internal/modules
+/cjs/loader:1091:12)
+    at 
+Module.require (node:
+internal/modules/cjs/
+loader:1289:19) {
+  code: 
+'MODULE_NOT_FOUND',
+  requireStack: [
+    'D:\\Grow-We-Go\\
+JC_Gold-Admin\\fronte
+nd\\node_modules\\lig
+htningcss\\node\\inde
+x.js',
+    'D:\\Grow-We-Go\\
+JC_Gold-Admin\\fronte
+nd\\test-lightningcss
+.js'
+  ]
+}

@@ -41,7 +41,7 @@ exports.createProduct = async (req, res, next) => {
 exports.getProducts = async (req, res, next) => {
     try {
         const products = await Product.find().populate('category');
-        
+
         // Fetch inventory for each product
         const productIds = products.map(p => p._id);
         const inventories = await Inventory.find({ product: { $in: productIds } });
@@ -108,6 +108,15 @@ exports.updateProduct = async (req, res, next) => {
             new: true,
             runValidators: true,
         });
+
+        // Handle stock update if provided
+        if (req.body.initialStock !== undefined) {
+            await Inventory.findOneAndUpdate(
+                { product: req.params.id },
+                { quantity: req.body.initialStock, lastUpdatedBy: req.admin._id },
+                { upsert: true, new: true }
+            );
+        }
 
         res.status(200).json({
             success: true,
