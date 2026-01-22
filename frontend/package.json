@@ -1,35 +1,50 @@
 {
   "name": "jc-gold-admin-mobile",
   "version": "1.0.0",
+  "type": "commonjs",
   "main": "./index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "postinstall": "node -e \"const fs=require('fs');const p='node_modules/metro-config/src/loadConfig.js';let c=fs.readFileSync(p,'utf8');c=c.replace(/const configModule = await import\\(absolutePath\\);/g,'const configModule = await import(process.platform === \\\"win32\\\" ? require(\\\"url\\\").pathToFileURL(absolutePath).href : absolutePath);');fs.writeFileSync(p,c);\""
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@types/react": "~19.1.10",
-    "expo": "^54.0.31",
+    "expo": "~54.0.32",
+    "expo-blur": "~15.0.8",
+    "expo-file-system": "~19.0.21",
+    "expo-image-picker": "~17.0.10",
     "expo-linking": "~8.0.11",
-    "expo-router": "~6.0.21",
+    "expo-print": "^15.0.8",
+    "expo-router": "~6.0.22",
     "expo-secure-store": "~15.0.8",
+    "expo-sharing": "~14.0.8",
     "expo-status-bar": "~3.0.9",
+    "lightningcss": "^1.27.0",
     "nativewind": "^4.2.1",
     "react": "19.1.0",
+    "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-toast-message": "^2.3.3",
-    "react-native-worklets": "^0.7.1",
+    "react-native-worklets": "0.5.1",
     "react-native-worklets-core": "^1.6.2",
+    "tailwindcss": "^3.4.19",
     "typescript": "~5.9.2"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
-    "tailwindcss": "^3.4.19"
+    "@expo/metro-config": "^54.0.13",
+    "babel-preset-expo": "^54.0.9",
+    "patch-package": "^8.0.1"
   },
-  "private": true
+  "private": true,
+  "optionalDependencies": {
+    "lightningcss-win32-x64-msvc": "^1.30.2"
+  }
 }

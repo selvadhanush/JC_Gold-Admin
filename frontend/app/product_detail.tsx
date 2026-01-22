@@ -14,6 +14,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../api';
 import Skeleton from '../components/Skeleton';
+import { showToast } from '../utils/toast';
 
 const { width } = Dimensions.get('window');
 
@@ -114,6 +115,11 @@ export default function ProductDetail() {
     };
 
     const addToCart = async () => {
+        if (isInCart) {
+            router.push('/cart');
+            return;
+        }
+
         try {
             const headers = await getAuthHeaders();
             const response = await fetch(API_ENDPOINTS.BUYER_CART, {
@@ -124,8 +130,13 @@ export default function ProductDetail() {
             const data = await response.json();
             if (data.success) {
                 setIsInCart(true);
+                showToast.success('Magnificent piece added to your vault');
+            } else {
+                showToast.error(data.message || 'Could not add to cart');
             }
-        } catch (error) { }
+        } catch (error) {
+            showToast.error('Network error. Failed to add to vault.');
+        }
     };
 
     const toggleWishlist = async () => {
@@ -430,8 +441,8 @@ export default function ProductDetail() {
                             size={20}
                             color={isInCart ? "#10b981" : "white"}
                         />
-                        <Text className={`font-black text-[10px] uppercase tracking-widest ml-2 ${isInCart ? 'text-gray-900' : 'text-white'}`}>
-                            {isInCart ? 'In Vault' : 'Add to Cart'}
+                        <Text className={`font-black text-[10px] uppercase tracking-widest ml-2 ${isInCart ? 'text-green-600' : 'text-white'}`}>
+                            {isInCart ? 'View in Vault' : 'Add to Cart'}
                         </Text>
                     </TouchableOpacity>
 

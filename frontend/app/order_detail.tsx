@@ -33,6 +33,8 @@ interface Order {
     shippingAmount: number;
     subtotalAmount: number;
     orderStatus: string;
+    isFinanceConfirmed: boolean;
+    isPriority: boolean;
     paymentMethod: string;
     createdAt: string;
     shippingAddress: {
@@ -150,9 +152,15 @@ export default function OrderDetail() {
                     <View className="flex-row items-center">
                         <Ionicons name={statusStyle.icon as any} size={14} color={statusStyle.text.replace('text-', '#')} />
                         <Text className={`ml-2 text-xs font-black uppercase tracking-widest ${statusStyle.text}`}>
-                            {order.orderStatus || 'PENDING'}
+                            {order.orderStatus === 'PENDING' && !order.isFinanceConfirmed ? 'Processing By Finance' : (order.orderStatus || 'PENDING')}
                         </Text>
                     </View>
+                    {order.orderStatus === 'PENDING' && order.isPriority && (
+                        <View className="mt-4 bg-red-50 px-4 py-2 rounded-2xl border border-red-100 flex-row items-center">
+                            <Ionicons name="flash" size={12} color="#ef4444" />
+                            <Text className="text-red-600 font-black text-[10px] ml-2 uppercase tracking-widest">Priority Processing Active</Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* Info Grid */}
@@ -237,7 +245,10 @@ export default function OrderDetail() {
 
             {/* Support Action */}
             <View className="absolute bottom-6 left-6 right-6">
-                <TouchableOpacity className="bg-primary-600 h-16 rounded-3xl items-center justify-center flex-row shadow-xl shadow-primary-500/30">
+                <TouchableOpacity
+                    onPress={() => router.push(`/order_support?orderId=${order._id}`)}
+                    className="bg-primary-600 h-16 rounded-3xl items-center justify-center flex-row shadow-xl shadow-primary-500/30"
+                >
                     <Ionicons name="chatbubble-ellipses-outline" size={20} color="white" />
                     <Text className="text-white font-black uppercase tracking-widest text-xs ml-3">Support Regarding this Order</Text>
                 </TouchableOpacity>

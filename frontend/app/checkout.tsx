@@ -30,7 +30,7 @@ interface CheckoutItem {
 export default function Checkout() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { productId, quantity: buyQuantity } = params;
+    const { productId, buyQuantity } = params;
 
     const [loading, setLoading] = useState(true);
     const [placingOrder, setPlacingOrder] = useState(false);
@@ -39,12 +39,16 @@ export default function Checkout() {
     const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE' | 'WALLET'>('COD');
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>([]);
     const [directProduct, setDirectProduct] = useState<any>(null);
+    const [directQuantity, setDirectQuantity] = useState<number>(1);
 
     const isDirectBuy = !!productId;
 
     useEffect(() => {
+        if (buyQuantity) {
+            setDirectQuantity(Number(buyQuantity));
+        }
         initCheckout();
-    }, []);
+    }, [buyQuantity]);
 
     const initCheckout = async () => {
         setLoading(true);
@@ -105,7 +109,7 @@ export default function Checkout() {
 
     const calculateSubtotal = () => {
         if (isDirectBuy && directProduct) {
-            return (directProduct.price || 0) * Number(buyQuantity || 1);
+            return (directProduct.price || 0) * directQuantity;
         }
         return checkoutItems.reduce((sum, item) => sum + ((item.product?.price || 0) * (item.quantity || 0)), 0);
     };
@@ -125,7 +129,7 @@ export default function Checkout() {
             if (isDirectBuy) {
                 payload = {
                     productId,
-                    quantity: Number(buyQuantity),
+                    quantity: directQuantity,
                     addressId: selectedAddress,
                     paymentMethod
                 };
@@ -259,8 +263,25 @@ export default function Checkout() {
                             </View>
                             <View className="flex-1">
                                 <Text className="font-bold text-gray-900 text-lg" numberOfLines={1}>{directProduct.name}</Text>
-                                <Text className="text-gray-500">Quantity: <Text className="text-gray-900 font-bold">{buyQuantity}</Text></Text>
-                                <Text className="text-primary-600 font-bold text-lg mt-1">₹{directProduct.price.toLocaleString()}</Text>
+                                <View className="flex-row items-center mt-1">
+                                    <Text className="text-gray-500 mr-3">Quantity:</Text>
+                                    <View className="flex-row items-center bg-gray-50 rounded-xl px-1 py-1 border border-gray-100">
+                                        <TouchableOpacity
+                                            onPress={() => directQuantity > 1 && setDirectQuantity(directQuantity - 1)}
+                                            className="w-8 h-8 items-center justify-center bg-white rounded-lg shadow-sm"
+                                        >
+                                            <Ionicons name="remove" size={16} color="#4b5563" />
+                                        </TouchableOpacity>
+                                        <Text className="mx-4 font-black text-gray-900">{directQuantity}</Text>
+                                        <TouchableOpacity
+                                            onPress={() => setDirectQuantity(directQuantity + 1)}
+                                            className="w-8 h-8 items-center justify-center bg-white rounded-lg shadow-sm"
+                                        >
+                                            <Ionicons name="add" size={16} color="#4b5563" />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                                <Text className="text-primary-600 font-bold text-lg mt-2">₹{directProduct.price.toLocaleString()}</Text>
                             </View>
                         </View>
                     ) : (

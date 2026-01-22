@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../api';
 import BottomNav from '../components/BottomNav';
 import Skeleton from '../components/Skeleton';
+import { showToast } from '../utils/toast';
 
 const { width } = Dimensions.get('window');
 
@@ -62,6 +63,14 @@ export default function Cart() {
 
     const updateQuantity = async (itemId: string, newQuantity: number) => {
         if (newQuantity < 1) return;
+
+        // Optimistic Update
+        const previousCartItems = [...cartItems];
+        const updatedItems = cartItems.map(item =>
+            item._id === itemId ? { ...item, quantity: newQuantity } : item
+        );
+        setCartItems(updatedItems);
+
         try {
             const headers = await getAuthHeaders();
             const response = await fetch(`${API_ENDPOINTS.BUYER_CART}/${itemId}`, {
@@ -70,8 +79,17 @@ export default function Cart() {
                 body: JSON.stringify({ quantity: newQuantity }),
             });
             const data = await response.json();
-            if (data.success) fetchCart();
-        } catch (error) { }
+
+            if (!data.success) {
+                // Revert on failure
+                setCartItems(previousCartItems);
+                showToast.error(data.message || 'Failed to update quantity');
+            }
+        } catch (error) {
+            console.error('Update Quantity Error:', error);
+            setCartItems(previousCartItems);
+            showToast.error('Network error. Could not update quantity.');
+        }
     };
 
     const removeItem = async (itemId: string) => {

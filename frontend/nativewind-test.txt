@@ -1,0 +1,25 @@
+﻿Step 1: Loading react-native-css-interop...
+node : Γ£ù react-nati
+ve-css-interop 
+failed: Unexpected 
+token 'typeof'
+At line:1 char:1
++ node 
+test-nativewind.js 
+2>&1 | Out-File 
+-FilePath 
+"nativewind-test.tx 
+...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (Γ£ù rea   
+ ct-nativ... toke    
+n 'typeof':Strin    
+g) [], RemoteExc    
+eption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 

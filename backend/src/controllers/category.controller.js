@@ -42,6 +42,14 @@ exports.getCategory = async (req, res, next) => {
 // @access  Private (Admin)
 exports.createCategory = async (req, res, next) => {
     try {
+        // Add image path if file was uploaded (Cloudinary returns full URL)
+        if (req.file) {
+            console.log('req.file:', JSON.stringify(req.file, null, 2));
+            // Cloudinary stores the full URL in req.file.path or req.file.url
+            req.body.image = req.file.url || req.file.path;
+            console.log('Saving image URL:', req.body.image);
+        }
+
         const category = await Category.create(req.body);
         res.status(201).json({
             success: true,
@@ -61,6 +69,14 @@ exports.updateCategory = async (req, res, next) => {
 
         if (!category) {
             return next(new ErrorResponse(`Category not found with id of ${req.params.id}`, 404));
+        }
+
+        // Add image path if file was uploaded (Cloudinary returns full URL)
+        if (req.file) {
+            console.log('req.file:', JSON.stringify(req.file, null, 2));
+            // Cloudinary stores the full URL in req.file.path or req.file.url
+            req.body.image = req.file.url || req.file.path;
+            console.log('Saving image URL:', req.body.image);
         }
 
         category = await Category.findByIdAndUpdate(req.params.id, req.body, {
@@ -93,6 +109,30 @@ exports.deleteCategory = async (req, res, next) => {
         res.status(200).json({
             success: true,
             data: {},
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// @desc    Toggle category status (enable/disable)
+// @route   PATCH /api/v1/categories/:id/status
+// @access  Private (Admin)
+exports.toggleCategoryStatus = async (req, res, next) => {
+    try {
+        let category = await Category.findById(req.params.id);
+
+        if (!category) {
+            return next(new ErrorResponse(`Category not found with id of ${req.params.id}`, 404));
+        }
+
+        // Toggle the isActive status
+        category.isActive = !category.isActive;
+        await category.save();
+
+        res.status(200).json({
+            success: true,
+            data: category,
         });
     } catch (err) {
         next(err);

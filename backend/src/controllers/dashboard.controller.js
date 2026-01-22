@@ -5,28 +5,55 @@ const Payment = require('../models/Payment');
 const ErrorResponse = require('../utils/errorResponse');
 
 // @desc    Get dashboard statistics
-// @route   GET /api/v1/dashboard/stats
+// @route   GET /api/v1/dashboard/stats?period=MONTH
 // @access  Private (Admin, FINANCE_ADMIN)
 exports.getStats = async (req, res, next) => {
     try {
-        // Total Revenue
+        // Determine date range based on period parameter
+        const period = req.query.period || 'MONTH';
+        let daysBack = 90; // Default to 90 days for backward compatibility
+
+        switch (period) {
+            case 'TODAY':
+                daysBack = 1;
+                break;
+            case 'WEEK':
+                daysBack = 7;
+                break;
+            case 'MONTH':
+                daysBack = 30;
+                break;
+            case 'YEAR':
+                daysBack = 365;
+                break;
+            default:
+                daysBack = 90;
+        }
+
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - daysBack);
+
+        // Total Revenue (all time)
         const revenue = await Order.aggregate([
             { $match: { paymentStatus: 'COMPLETED' } },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
         ]);
 
-        // Daily Sales (last 30 days)
-        const dailySales = await Order.aggregate([
+        // Daily Sales & Order Count (filtered by period)
+        const dailyStats = await Order.aggregate([
             {
                 $match: {
-                    paymentStatus: 'COMPLETED',
-                    createdAt: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) }
+                    createdAt: { $gte: startDate }
                 }
             },
             {
                 $group: {
                     _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-                    sales: { $sum: '$totalAmount' },
+                    sales: {
+                        $sum: {
+                            $cond: [{ $eq: ["$paymentStatus", "COMPLETED"] }, "$totalAmount", 0]
+                        }
+                    },
                     count: { $sum: 1 }
                 }
             },
@@ -65,14 +92,29 @@ exports.getStats = async (req, res, next) => {
             { $group: { _id: null, total: { $sum: '$totalAmountPaid' } } }
         ]);
 
+        // Total orders count (all time)
+        const totalOrders = await Order.countDocuments();
+
+        // Support Tickets notification count (OPEN or IN_PROGRESS)
+        const Support = require('../models/Support');
+        const allTickets = await Support.find({}).select('status subject category');
+        const unresolvedTicketsCount = await Support.countDocuments({
+            status: { $in: ['OPEN', 'IN_PROGRESS'] }
+        });
+
+        console.log('🎫 Dashboard API - All Tickets:', allTickets);
+        console.log('🎫 Dashboard API - Unresolved Tickets Count:', unresolvedTicketsCount);
+
         res.status(200).json({
             success: true,
             data: {
                 totalRevenue: revenue[0] ? revenue[0].total : 0,
-                dailySales,
+                totalOrders,
+                dailySales: dailyStats,
                 ordersByStatus,
                 topProducts,
-                schemeRevenue: schemeRevenue[0] ? schemeRevenue[0].total : 0
+                schemeRevenue: schemeRevenue[0] ? schemeRevenue[0].total : 0,
+                unresolvedTicketsCount
             }
         });
     } catch (err) {
@@ -86,7 +128,7 @@ exports.getStats = async (req, res, next) => {
 exports.exportSalesCSV = async (req, res, next) => {
     try {
         const orders = await Order.find({ paymentStatus: 'COMPLETED' }).populate('user', 'name');
-        
+
         // Manual CSV generation
         let csv = 'Order ID,Customer,Amount,Date,Status\n';
         orders.forEach(order => {
