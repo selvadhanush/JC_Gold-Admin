@@ -67,7 +67,7 @@ export default function Login() {
         }
     };
 
-    const fetchWithTimeout = async (url: string, options: any, timeout = 5000) => {
+    const fetchWithTimeout = async (url: string, options: any, timeout = 15000) => {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
         try {

@@ -20,6 +20,7 @@ export default function BuyerDashboard() {
     const [wishlist, setWishlist] = useState<any[]>([]);
     const [resolvedTickets, setResolvedTickets] = useState<any[]>([]);
     const [productsLoading, setProductsLoading] = useState(true);
+    const [goldRate, setGoldRate] = useState<number>(7250);
 
     const initData = useCallback(async () => {
         try {
@@ -29,7 +30,8 @@ export default function BuyerDashboard() {
                 fetchProducts(),
                 fetchCategories(),
                 fetchWishlist(),
-                fetchResolvedTickets()
+                fetchResolvedTickets(),
+                fetchGoldRate()
             ]);
         } catch (error) {
             console.error('Initialization error:', error);
@@ -105,6 +107,18 @@ export default function BuyerDashboard() {
             if (data.success) {
                 const resolved = data.data.filter((t: any) => t.status === 'RESOLVED' || t.status === 'CLOSED');
                 setResolvedTickets(resolved);
+            }
+        } catch (error) { }
+    };
+
+    const fetchGoldRate = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.ADMIN_GOLD_RATE, { headers });
+            const data = await response.json();
+            if (data.success && data.data.length > 0) {
+                const active = data.data.find((r: any) => r.isActive && r.metalType === 'GOLD');
+                if (active) setGoldRate(active.ratePerGram);
             }
         } catch (error) { }
     };
@@ -188,9 +202,9 @@ export default function BuyerDashboard() {
                     {/* Premium Jewelry Cards Section */}
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-8">
                         {[
-                            { goldTitle: 'Gold 24K', goldPrice: '7,250', silverTitle: 'Fine Silver', silverPrice: '780', bgColor: 'bg-primary-600', icon: 'diamond-outline' },
-                            { goldTitle: 'Gold 22K', goldPrice: '6,850', silverTitle: 'Sterling Silver', silverPrice: '720', bgColor: 'bg-primary-600', icon: 'sparkles-outline' },
-                            { goldTitle: 'Gold 18K', goldPrice: '5,650', silverTitle: 'Britannia Silver', silverPrice: '760', bgColor: 'bg-primary-600', icon: 'flower-outline' }
+                            { goldTitle: 'Gold 24K', goldPrice: goldRate.toLocaleString(), silverTitle: 'Fine Silver', silverPrice: '780', bgColor: 'bg-primary-600', icon: 'diamond-outline' },
+                            { goldTitle: 'Gold 22K', goldPrice: (goldRate * 0.92).toFixed(0).toLocaleString(), silverTitle: 'Sterling Silver', silverPrice: '720', bgColor: 'bg-primary-600', icon: 'sparkles-outline' },
+                            { goldTitle: 'Gold 18K', goldPrice: (goldRate * 0.75).toFixed(0).toLocaleString(), silverTitle: 'Britannia Silver', silverPrice: '760', bgColor: 'bg-primary-600', icon: 'flower-outline' }
                         ].map((card, idx) => (
                             <View key={idx} className="mr-4" style={{ width: 300 }}>
                                 <TouchableOpacity activeOpacity={0.8} className={`${card.bgColor} rounded-[32px] overflow-hidden shadow-xl`} style={{ elevation: 8 }}>
@@ -229,7 +243,7 @@ export default function BuyerDashboard() {
                         <View className="flex-row flex-wrap justify-between">
                             {[
                                 { label: 'Track Orders', icon: 'receipt-outline', route: '/orders' },
-                                { label: 'Wishlist', icon: 'shield-checkmark-outline', route: '/wishlist' },
+                                { label: 'Digital Gold', icon: 'wallet-outline', route: '/digital_gold' },
                                 { label: 'Addresses', icon: 'map-outline', route: '/addresses' },
                                 { label: 'My Profile', icon: 'person-outline', route: '/profile' },
                             ].map((item, idx) => (

@@ -374,6 +374,21 @@ export default function OrderAdminDashboard() {
                                     <Text className="text-white font-black text-lg">{stats?.totalOrders || 0}</Text>
                                 </View>
                             </TouchableOpacity>
+
+                            {/* Digital Gold Delivery */}
+                            <TouchableOpacity
+                                onPress={() => router.push('/Orderadmin/digital_gold')}
+                                className="bg-white border-2 border-blue-100 rounded-[32px] p-6 mb-4 shadow-sm w-full flex-row items-center"
+                            >
+                                <View className="bg-blue-600 w-14 h-14 rounded-2xl items-center justify-center shadow-lg">
+                                    <Ionicons name="gift" size={28} color="white" />
+                                </View>
+                                <View className="ml-5 flex-1">
+                                    <Text className="text-black font-black text-lg">Gold Deliveries</Text>
+                                    <Text className="text-gray-500 text-xs font-medium">Physical gold redemption requests</Text>
+                                </View>
+                                <Ionicons name="arrow-forward-circle" size={32} color="#2563eb" />
+                            </TouchableOpacity>
                         </View>
                     </View>
 

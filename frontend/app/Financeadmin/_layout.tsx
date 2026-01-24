@@ -31,6 +31,7 @@ export default function FinanceAdminLayout() {
             <Tabs.Screen name="enrollments" options={{ title: 'Enrollments' }} />
             <Tabs.Screen name="installments" options={{ title: 'Installments' }} />
             <Tabs.Screen name="reports" options={{ title: 'Reports' }} />
+            <Tabs.Screen name="digital_gold" options={{ title: 'Digital Gold', href: null }} />
         </Tabs>
     );
 }

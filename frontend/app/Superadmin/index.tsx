@@ -290,6 +290,20 @@ export default function SuperAdminDashboard() {
                             </TouchableOpacity>
 
                             <TouchableOpacity
+                                onPress={() => router.push('/Financeadmin/digital_gold' as any)}
+                                className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex-row items-center"
+                            >
+                                <View className="bg-white border border-yellow-100 w-14 h-14 rounded-2xl items-center justify-center shadow-inner">
+                                    <Ionicons name="sparkles" size={28} color="#eab308" />
+                                </View>
+                                <View className="ml-5 flex-1">
+                                    <Text className="text-black font-black text-lg">Digital Gold Vault</Text>
+                                    <Text className="text-gray-500 text-xs font-medium">Daily rates & global approvals</Text>
+                                </View>
+                                <Ionicons name="arrow-forward-circle" size={32} color="#000" />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
                                 onPress={() => router.push('/Superadmin/cms_control')}
                                 className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex-row items-center"
                             >

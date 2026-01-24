@@ -78,6 +78,13 @@ export default function OrderAdminLayout() {
                     title: 'All Tickets'
                 }}
             />
+            <Tabs.Screen
+                name="digital_gold"
+                options={{
+                    href: null,
+                    title: 'Digital Gold'
+                }}
+            />
         </Tabs>
     );
 }
