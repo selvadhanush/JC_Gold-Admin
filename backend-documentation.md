@@ -1,8 +1,25 @@
-# JC Gold Admin - Backend Documentation
+# JC Gold - Complete Backend Documentation
 
-This document provides a comprehensive overview of the backend architecture, API endpoints, and workflows for the JC Gold Admin system.
+> **Version:** 2.0  
+> **Last Updated:** January 2026  
+> **Status:** Production-Ready ✅
 
-## 1. Architecture Overview
+## 📋 Table of Contents
+
+1. [Architecture Overview](#architecture-overview)
+2. [Authentication & Security](#authentication--security)
+3. [Digital Gold System (LOT-BASED)](#digital-gold-system-lot-based)
+4. [MPIN Security](#mpin-security)
+5. [KYC Verification](#kyc-verification)
+6. [Order Management](#order-management)
+7. [API Reference](#api-reference)
+8. [Database Models](#database-models)
+9. [Frontend Integration](#frontend-integration)
+10. [Deployment Guide](#deployment-guide)
+
+---
+
+## 🏗️ Architecture Overview
 The backend is a Node.js/Express application utilizing a modular RESTful architecture.
 
 - **Framework:** Express.js
