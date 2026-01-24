@@ -58,7 +58,23 @@ The system supports two distinct user portals: **Admin** (with various internal 
 ### 📋 Order Management
 - **Admin Orders:** `GET /api/v1/orders`
 - **Buyer Orders:** `GET /api/v1/buyer/orders`
-- **Direct Order:** `POST /api/v1/buyer/orders/direct`
+- **Direct Order:** `POST /api/v1/buyer/orders/direct` ⚠️ Requires KYC approval
+
+### 🆔 KYC (Know Your Customer)
+- **Submit KYC (Buyer):** `POST /api/v1/buyer/kyc/submit` (Rate limited: 3/day)
+- **Get Status (Buyer):** `GET /api/v1/buyer/kyc/status` (Rate limited: 30/hour)
+- **Resubmit KYC (Buyer):** `PUT /api/v1/buyer/kyc/resubmit`
+- **Upload Documents (Buyer):** `POST /api/v1/buyer/kyc/upload-document` (Optional)
+- **List All KYC (Admin):** `GET /api/v1/admin/kyc` (SUPER_ADMIN, FINANCE_ADMIN, PRODUCT_ADMIN)
+- **View KYC (Admin):** `GET /api/v1/admin/kyc/:id`
+- **Approve KYC (Admin):** `PATCH /api/v1/admin/kyc/:id/approve` (SUPER_ADMIN, FINANCE_ADMIN only)
+- **Reject KYC (Admin):** `PATCH /api/v1/admin/kyc/:id/reject` (SUPER_ADMIN, FINANCE_ADMIN only)
+
+**KYC Enforcement:**
+- Gold redemption (`POST /api/v1/buyer/digital-gold/redeem`) ⚠️ Requires KYC approval
+- Direct orders (`POST /api/v1/buyer/orders/direct`) ⚠️ Requires KYC approval
+
+**KYC Status Lifecycle:** NOT_SUBMITTED → PENDING → APPROVED/REJECTED
 
 ---
 
