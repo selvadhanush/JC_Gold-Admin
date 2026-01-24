@@ -442,6 +442,20 @@ export default function FinanceAdminDashboard() {
                             </TouchableOpacity>
 
                             <TouchableOpacity
+                                onPress={() => router.push('/Financeadmin/digital_gold')}
+                                className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex-row items-center"
+                            >
+                                <View className="bg-white border border-yellow-100 w-14 h-14 rounded-2xl items-center justify-center shadow-inner">
+                                    <Ionicons name="trending-up" size={28} color="#eab308" />
+                                </View>
+                                <View className="ml-5 flex-1">
+                                    <Text className="text-black font-black text-lg">Digital Gold</Text>
+                                    <Text className="text-gray-500 text-xs font-medium">Manage rates & approvals</Text>
+                                </View>
+                                <Ionicons name="arrow-forward-circle" size={32} color="#000" />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
                                 onPress={() => router.push('/Financeadmin/waiting_confirmation' as any)}
                                 className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex-row items-center"
                             >

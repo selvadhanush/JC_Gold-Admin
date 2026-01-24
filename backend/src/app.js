@@ -49,6 +49,10 @@ app.use('/api/v1/buyer/orders', require('./routes/buyer/order.routes'));
 app.use('/api/v1/buyer/payments', require('./routes/buyer/payment.routes'));
 app.use('/api/v1/buyer/schemes', require('./routes/buyer/scheme.routes'));
 app.use('/api/v1/buyer/notifications', require('./routes/buyer/notification.routes'));
+app.use('/api/v1/buyer/digital-gold', require('./routes/buyer/digitalGold.routes'));
+
+// Admin Digital Gold routes
+app.use('/api/v1/admin/digital-gold', require('./routes/adminDigitalGold.routes'));
 
 
 

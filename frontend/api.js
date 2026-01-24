@@ -3,7 +3,7 @@
 // For iOS Simulators use: http://localhost:5000
 // For physical devices, use your computer's local IP address (e.g., http://192.168.1.10:5000)
 
-export const BASE_URL = 'http://10.167.126.96:5000'; // For Android Emulator
+export const BASE_URL = 'http://10.0.2.2:5000'; // Standard bridge for Android Emulator
 
 import * as SecureStore from 'expo-secure-store';
 
@@ -88,6 +88,17 @@ export const API_ENDPOINTS = {
     // Finance Admin - Dashboard & Reports
     FINANCE_DASHBOARD_STATS: `${BASE_URL}/api/v1/dashboard/stats`,
     FINANCE_EXPORT_SALES: `${BASE_URL}/api/v1/dashboard/export/sales`,
+
+    // Digital Gold - Buyer
+    BUYER_DIGITAL_GOLD_BUY: `${BASE_URL}/api/v1/buyer/digital-gold/buy`,
+    BUYER_DIGITAL_GOLD_WALLET: `${BASE_URL}/api/v1/buyer/digital-gold/wallet`,
+    BUYER_DIGITAL_GOLD_REDEEM: `${BASE_URL}/api/v1/buyer/digital-gold/redeem`,
+    BUYER_DIGITAL_GOLD_TRANSACTIONS: `${BASE_URL}/api/v1/buyer/digital-gold/transactions`,
+
+    // Digital Gold - Admin
+    ADMIN_GOLD_RATE: `${BASE_URL}/api/v1/admin/digital-gold/gold-rate`,
+    ADMIN_DIGITAL_GOLD_APPROVE: (id) => `${BASE_URL}/api/v1/admin/digital-gold/approve/${id}`,
+    ADMIN_DIGITAL_GOLD_REDEMPTION_APPROVE: (id) => `${BASE_URL}/api/v1/admin/digital-gold/redemption/approve/${id}`,
 };
 
 export const getAuthHeaders = async () => {

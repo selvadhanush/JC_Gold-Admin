@@ -249,6 +249,12 @@ export default function RootLayout() {
                         headerShown: false
                     }}
                 />
+                <Stack.Screen
+                    name="digital_gold"
+                    options={{
+                        headerShown: false
+                    }}
+                />
             </Stack>
             <Toast config={toastConfig} />
         </>
