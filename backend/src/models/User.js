@@ -57,4 +57,16 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
+// Virtual populate for KYC
+userSchema.virtual('kyc', {
+    ref: 'Kyc',
+    localField: '_id',
+    foreignField: 'userId',
+    justOne: true
+});
+
+// Ensure virtuals are included in JSON
+userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
+
 module.exports = mongoose.model('User', userSchema);
