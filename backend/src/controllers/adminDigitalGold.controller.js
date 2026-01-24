@@ -2,6 +2,7 @@ const GoldRate = require('../models/GoldRate');
 const DigitalGoldTransaction = require('../models/DigitalGoldTransaction');
 const RedemptionRequest = require('../models/RedemptionRequest');
 const User = require('../models/User');
+const GoldLot = require('../models/GoldLot');
 const ErrorResponse = require('../utils/errorResponse');
 const { notifyRecipient } = require('../utils/notification');
 const mongoose = require('mongoose');
@@ -70,6 +71,22 @@ exports.approveTransaction = async (req, res, next) => {
         transaction.rejectionReason = rejectionReason;
 
         if (status === 'APPROVED' && transaction.type === 'BUY') {
+            // LOT-BASED: Create a new GoldLot
+            const lot = await GoldLot.create([{
+                user: transaction.user,
+                purchaseTransaction: transaction._id,
+                purchaseDate: transaction.createdAt,
+                goldGrams: transaction.goldGrams,
+                remainingGrams: transaction.goldGrams,
+                pricePerGram: transaction.goldRateAtTime,
+                totalPaid: transaction.amountPaid,
+                status: 'ACTIVE'
+            }], { session });
+
+            // Link lot to transaction
+            transaction.lotsCreated = [lot[0]._id];
+
+            // Update user wallet (for backward compatibility)
             const user = await User.findById(transaction.user).session(session);
             user.wallet.goldBalance += transaction.goldGrams;
             await user.save({ session });
