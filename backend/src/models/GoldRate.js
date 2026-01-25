@@ -11,6 +11,11 @@ const goldRateSchema = new mongoose.Schema({
         default: 'GOLD',
         required: true,
     },
+    purity: {
+        type: String,
+        required: [true, 'Please provide purity (e.g., 24K, 22K)'],
+        default: '24K'
+    },
     ratePerGram: {
         type: Number,
         required: [true, 'Please provide rate per gram'],
@@ -31,12 +36,12 @@ const goldRateSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
-// Compound unique index for date and metalType
-goldRateSchema.index({ date: 1, metalType: 1 }, { unique: true });
+// Compound unique index for date and metalType and purity
+goldRateSchema.index({ date: 1, metalType: 1, purity: 1 }, { unique: true });
 goldRateSchema.index({ isActive: 1, metalType: 1 });
 
 // Automatically normalize date before any save/update
-goldRateSchema.pre('save', function() {
+goldRateSchema.pre('save', function () {
     if (this.date) {
         const d = new Date(this.date);
         d.setHours(0, 0, 0, 0);

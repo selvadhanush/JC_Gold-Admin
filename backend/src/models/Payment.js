@@ -20,13 +20,19 @@ const paymentSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ['ONLINE', 'WALLET', 'OFFLINE'],
+        enum: ['ONLINE', 'WALLET', 'OFFLINE', 'COD'],
         required: true,
     },
     transactionId: {
         type: String,
         required: true,
         unique: true,
+    },
+    razorpayOrderId: {
+        type: String,
+    },
+    razorpaySignature: {
+        type: String,
     },
     status: {
         type: String,
@@ -36,7 +42,7 @@ const paymentSchema = new mongoose.Schema({
     paymentType: {
         type: String,
         enum: ['ORDER', 'SCHEME_INSTALMENT', 'WALLET_TOPUP'],
-        required: true,
+        default: 'ORDER',
     },
 }, { timestamps: true });
 

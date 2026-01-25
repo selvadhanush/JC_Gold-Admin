@@ -21,6 +21,8 @@ export default function BuyerDashboard() {
     const [resolvedTickets, setResolvedTickets] = useState<any[]>([]);
     const [productsLoading, setProductsLoading] = useState(true);
     const [goldRate, setGoldRate] = useState<number>(7250);
+    const [wallet, setWallet] = useState<any>({ goldBalance: 0 });
+    const [dashboardRates, setDashboardRates] = useState<any[]>([]);
 
     const initData = useCallback(async () => {
         try {
@@ -31,7 +33,9 @@ export default function BuyerDashboard() {
                 fetchCategories(),
                 fetchWishlist(),
                 fetchResolvedTickets(),
-                fetchGoldRate()
+                fetchGoldRate(),
+                fetchWallet(),
+                fetchDashboardRates()
             ]);
         } catch (error) {
             console.error('Initialization error:', error);
@@ -40,6 +44,27 @@ export default function BuyerDashboard() {
             setRefreshing(false);
         }
     }, []);
+
+    const fetchDashboardRates = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.ADMIN_DIGITAL_GOLD_DASHBOARD_RATES, { headers });
+            const data = await response.json();
+            if (data.success) {
+                setDashboardRates(data.data);
+            }
+        } catch (error) { }
+    };
+
+    // Helper to get rate for display
+    const getRate = (metal: string, purity: string) => {
+        const rateObj = dashboardRates.find(r => r.metalType === metal && r.purity === purity);
+        return {
+            price: rateObj?.rate ? rateObj.rate.toLocaleString() : '---',
+            change: rateObj?.change || 0,
+            hasHistory: rateObj?.hasHistory || false
+        };
+    };
 
     useEffect(() => {
         initData();
@@ -106,7 +131,24 @@ export default function BuyerDashboard() {
             const data = await response.json();
             if (data.success) {
                 const resolved = data.data.filter((t: any) => t.status === 'RESOLVED' || t.status === 'CLOSED');
-                setResolvedTickets(resolved);
+
+                // Get previously seen tickets
+                const seenStore = await SecureStore.getItemAsync('seen_resolved_tickets');
+                const seenIds: string[] = seenStore ? JSON.parse(seenStore) : [];
+
+                // Filter out tickets that have been seen
+                const newResolved = resolved.filter((t: any) => !seenIds.includes(t._id));
+
+                setResolvedTickets(newResolved);
+
+                // If we have new tickets to show, mark them as seen for the NEXT time
+                if (newResolved.length > 0) {
+                    const newIds = newResolved.map((t: any) => t._id);
+                    const updatedSeen = [...seenIds, ...newIds];
+                    // Use a Set to avoid duplicates just in case, though the logic above avoids it
+                    const uniqueSeen = Array.from(new Set(updatedSeen));
+                    await SecureStore.setItemAsync('seen_resolved_tickets', JSON.stringify(uniqueSeen));
+                }
             }
         } catch (error) { }
     };
@@ -120,6 +162,15 @@ export default function BuyerDashboard() {
                 const active = data.data.find((r: any) => r.isActive && r.metalType === 'GOLD');
                 if (active) setGoldRate(active.ratePerGram);
             }
+        } catch (error) { }
+    };
+
+    const fetchWallet = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.BUYER_DIGITAL_GOLD_WALLET, { headers });
+            const data = await response.json();
+            if (data.success) setWallet(data.data.wallet);
         } catch (error) { }
     };
 
@@ -199,12 +250,34 @@ export default function BuyerDashboard() {
             >
                 <View className="px-6 pb-52">
 
+
                     {/* Premium Jewelry Cards Section */}
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-8">
                         {[
-                            { goldTitle: 'Gold 24K', goldPrice: goldRate.toLocaleString(), silverTitle: 'Fine Silver', silverPrice: '780', bgColor: 'bg-primary-600', icon: 'diamond-outline' },
-                            { goldTitle: 'Gold 22K', goldPrice: (goldRate * 0.92).toFixed(0).toLocaleString(), silverTitle: 'Sterling Silver', silverPrice: '720', bgColor: 'bg-primary-600', icon: 'sparkles-outline' },
-                            { goldTitle: 'Gold 18K', goldPrice: (goldRate * 0.75).toFixed(0).toLocaleString(), silverTitle: 'Britannia Silver', silverPrice: '760', bgColor: 'bg-primary-600', icon: 'flower-outline' }
+                            {
+                                goldTitle: 'Gold 24K',
+                                goldRate: getRate('GOLD', '24K'),
+                                silverTitle: 'Fine Silver',
+                                silverRate: getRate('SILVER', 'FINE'),
+                                bgColor: 'bg-primary-600',
+                                icon: 'diamond-outline'
+                            },
+                            {
+                                goldTitle: 'Gold 22K',
+                                goldRate: getRate('GOLD', '22K'),
+                                silverTitle: 'Sterling Silver',
+                                silverRate: getRate('SILVER', 'STERLING'),
+                                bgColor: 'bg-primary-600',
+                                icon: 'sparkles-outline'
+                            },
+                            {
+                                goldTitle: 'Gold 18K',
+                                goldRate: getRate('GOLD', '18K'),
+                                silverTitle: 'Britannia Silver',
+                                silverRate: getRate('SILVER', 'BRITANNIA'),
+                                bgColor: 'bg-primary-600',
+                                icon: 'flower-outline'
+                            }
                         ].map((card, idx) => (
                             <View key={idx} className="mr-4" style={{ width: 300 }}>
                                 <TouchableOpacity activeOpacity={0.8} className={`${card.bgColor} rounded-[32px] overflow-hidden shadow-xl`} style={{ elevation: 8 }}>
@@ -215,13 +288,41 @@ export default function BuyerDashboard() {
 
                                         <View className="mb-6">
                                             <Text className="text-white/80 text-[10px] font-bold mb-1">{card.goldTitle}</Text>
-                                            <Text className="text-white text-3xl font-black leading-tight">₹{card.goldPrice}</Text>
+                                            <View className="flex-row items-end flex-wrap">
+                                                <Text className="text-white text-3xl font-black leading-tight">₹{card.goldRate.price}</Text>
+                                                {card.goldRate.hasHistory && card.goldRate.change !== 0 && (
+                                                    <View className={`flex-row items-center ml-3 px-2.5 py-1 rounded-full ${card.goldRate.change > 0 ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                                                        <Ionicons
+                                                            name={card.goldRate.change > 0 ? "caret-up" : "caret-down"}
+                                                            size={12}
+                                                            color={card.goldRate.change > 0 ? "#22c55e" : "#ef4444"}
+                                                        />
+                                                        <Text className={`text-[12px] font-black ml-1 ${card.goldRate.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {card.goldRate.change > 0 ? '+' : ''}{card.goldRate.change}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                            </View>
                                             <Text className="text-white/70 text-[9px] mt-1">Per Gram</Text>
                                         </View>
 
                                         <View className="border-t border-white/20 pt-4 mb-6">
                                             <Text className="text-white/80 text-[10px] font-bold mb-1">{card.silverTitle}</Text>
-                                            <Text className="text-white text-3xl font-black leading-tight">₹{card.silverPrice}</Text>
+                                            <View className="flex-row items-end flex-wrap">
+                                                <Text className="text-white text-3xl font-black leading-tight">₹{card.silverRate.price}</Text>
+                                                {card.silverRate.hasHistory && card.silverRate.change !== 0 && (
+                                                    <View className={`flex-row items-center ml-3 px-2.5 py-1 rounded-full ${card.silverRate.change > 0 ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                                                        <Ionicons
+                                                            name={card.silverRate.change > 0 ? "caret-up" : "caret-down"}
+                                                            size={12}
+                                                            color={card.silverRate.change > 0 ? "#22c55e" : "#ef4444"}
+                                                        />
+                                                        <Text className={`text-[12px] font-black ml-1 ${card.silverRate.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {card.silverRate.change > 0 ? '+' : ''}{card.silverRate.change}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                            </View>
                                             <Text className="text-white/70 text-[9px] mt-1">Per Gram</Text>
                                         </View>
 
@@ -239,12 +340,44 @@ export default function BuyerDashboard() {
                         ))}
                     </ScrollView>
                     <View className="mb-12">
+                        {/* Digital Gold Section */}
+                        <TouchableOpacity
+                            onPress={() => router.push('/digital_gold')}
+                            activeOpacity={0.9}
+                            className="bg-gray-900 rounded-[32px] p-6 mb-8 shadow-xl shadow-gray-400"
+                        >
+                            <View className="flex-row justify-between items-start mb-4">
+                                <View>
+                                    <View className="flex-row items-center mb-2">
+                                        <Text className="text-amber-400 text-[10px] font-black uppercase tracking-widest mr-2">Digital Gold Vault</Text>
+                                        <Ionicons name="lock-closed" size={12} color="#fbbf24" />
+                                    </View>
+                                    <Text className="text-white text-3xl font-black">{wallet.goldBalance?.toFixed(3)}g</Text>
+                                    <Text className="text-gray-400 text-xs mt-1">Total Gold Balance</Text>
+                                </View>
+                                <View className="w-12 h-12 bg-gray-800 rounded-2xl items-center justify-center border border-gray-700">
+                                    <Ionicons name="logo-bitcoin" size={24} color="#fbbf24" />
+                                </View>
+                            </View>
+
+                            <View className="flex-row items-center justify-between border-t border-gray-800 pt-4">
+                                <View className="flex-row items-center">
+                                    <Text className="text-gray-400 text-xs">Current Value: </Text>
+                                    <Text className="text-white font-bold">₹{(wallet.goldBalance * goldRate).toLocaleString()}</Text>
+                                </View>
+                                <View className="flex-row items-center bg-gray-800 px-3 py-1.5 rounded-full">
+                                    <Text className="text-amber-400 text-[9px] font-black uppercase mr-1">Manage</Text>
+                                    <Ionicons name="arrow-forward" size={10} color="#fbbf24" />
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+
                         <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[4px] mb-6">Concierge Services</Text>
                         <View className="flex-row flex-wrap justify-between">
                             {[
                                 { label: 'Track Orders', icon: 'receipt-outline', route: '/orders' },
-                                { label: 'Digital Gold', icon: 'wallet-outline', route: '/digital_gold' },
                                 { label: 'Addresses', icon: 'map-outline', route: '/addresses' },
+                                { label: 'Wishlist', icon: 'heart-outline', route: '/wishlist' }, // Replaced Digital Gold
                                 { label: 'My Profile', icon: 'person-outline', route: '/profile' },
                             ].map((item, idx) => (
                                 <TouchableOpacity

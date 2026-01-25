@@ -50,7 +50,16 @@ export default function AddressManagement() {
     };
 
     const handleSaveAddress = async () => {
-        const payload = { fullName, phone, addressLine1, addressLine2, city, state, pincode, isDefault };
+        const payload = {
+            fullName: fullName.trim(),
+            phone: phone.trim(),
+            addressLine1: addressLine1.trim(),
+            addressLine2: addressLine2.trim(),
+            city: city.trim(),
+            state: state.trim(),
+            pincode: pincode.trim(),
+            isDefault
+        };
         const method = editingAddress ? 'PUT' : 'POST';
         const url = editingAddress
             ? `${API_ENDPOINTS.BUYER_ADDRESSES}/${editingAddress._id}`
@@ -69,9 +78,11 @@ export default function AddressManagement() {
                 setModalVisible(false);
                 fetchAddresses();
                 resetForm();
+            } else {
+                Alert.alert('Validation Error', data.message || 'Check your input');
             }
         } catch (error) {
-            Alert.alert('Error', 'Failed to save address');
+            Alert.alert('Error', 'Failed to save address. Please check your internet connection.');
         }
     };
 

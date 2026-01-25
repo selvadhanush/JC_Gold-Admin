@@ -93,7 +93,7 @@ exports.deleteAdmin = async (req, res, next) => {
         }
 
         // Prevent deleting yourself
-        if (admin._id.toString() === req.admin.id.toString()) {
+        if (admin._id.toString() === req.admin._id.toString()) {
             return next(new ErrorResponse('You cannot delete your own account', 400));
         }
 
