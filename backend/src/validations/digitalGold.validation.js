@@ -4,6 +4,7 @@ const Joi = require('joi');
 exports.goldRateValidation = Joi.object({
     date: Joi.date().required(),
     metalType: Joi.string().valid('GOLD', 'SILVER').default('GOLD'),
+    purity: Joi.string().optional(),
     ratePerGram: Joi.number().positive().required(),
     source: Joi.string().valid('MANUAL', 'API').default('MANUAL'),
 });

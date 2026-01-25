@@ -1,20 +1,28 @@
 const express = require('express');
+console.log('--- MOUNTING ADMIN DIGITAL GOLD ROUTES ---');
 const {
     setGoldRate,
     getGoldRates,
+    getLatestDashboardRates,
     approveTransaction,
-    approveRedemption
+    approveRedemption,
+    getRedemptions,
+    getTransactions
 } = require('../controllers/adminDigitalGold.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const { authorize } = require('../middlewares/role.middleware');
 const validate = require('../middlewares/validate.middleware');
 const { logAction } = require('../middlewares/audit.middleware');
-const { 
-    goldRateValidation, 
-    approveTransactionValidation 
+const {
+    goldRateValidation,
+    approveTransactionValidation
 } = require('../validations/digitalGold.validation');
 
 const router = express.Router();
+
+router.get('/redemptions', getRedemptions);
+
+router.get('/dashboard-rates', getLatestDashboardRates);
 
 router.use(protect);
 
@@ -24,5 +32,8 @@ router.route('/gold-rate')
 
 router.put('/approve/:id', authorize('SUPER_ADMIN', 'FINANCE_ADMIN'), validate(approveTransactionValidation), logAction('APPROVE_GOLD_PURCHASE', 'DIGITAL_GOLD'), approveTransaction);
 router.put('/redemption/approve/:id', authorize('SUPER_ADMIN', 'FINANCE_ADMIN', 'ORDER_ADMIN'), validate(approveTransactionValidation), logAction('APPROVE_GOLD_REDEMPTION', 'DIGITAL_GOLD'), approveRedemption);
+
+router.get('/redemptions', authorize('SUPER_ADMIN', 'FINANCE_ADMIN', 'ORDER_ADMIN'), getRedemptions);
+router.get('/transactions', authorize('SUPER_ADMIN', 'FINANCE_ADMIN', 'ORDER_ADMIN'), getTransactions);
 
 module.exports = router;

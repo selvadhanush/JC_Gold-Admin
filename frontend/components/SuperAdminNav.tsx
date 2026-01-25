@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 const { width } = Dimensions.get('window');
 
 interface SuperAdminNavProps {
-    activeTab?: 'dashboard' | 'admins' | 'users' | 'audit' | 'settings';
+    activeTab?: 'dashboard' | 'admins' | 'users' | 'audit' | 'settings' | 'rates';
 }
 
 export default function SuperAdminNav({ activeTab }: SuperAdminNavProps) {
@@ -14,9 +14,9 @@ export default function SuperAdminNav({ activeTab }: SuperAdminNavProps) {
 
     const tabs = [
         { id: 'dashboard', label: 'Home', icon: 'terminal-outline', activeIcon: 'terminal', route: '/Superadmin' },
+        { id: 'rates', label: 'Rates', icon: 'trending-up-outline', activeIcon: 'trending-up', route: '/Superadmin/manage_gold_rates' },
         { id: 'admins', label: 'Admins', icon: 'id-card-outline', activeIcon: 'id-card', route: '/Superadmin/manage_admins' },
         { id: 'users', label: 'Buyers', icon: 'people-circle-outline', activeIcon: 'people-circle', route: '/Superadmin/manage_users' },
-        { id: 'audit', label: 'Audit', icon: 'finger-print-outline', activeIcon: 'finger-print', route: '/Superadmin/audit_logs' },
         { id: 'settings', label: 'System', icon: 'construct-outline', activeIcon: 'construct', route: '/Superadmin/system_settings' },
     ];
 

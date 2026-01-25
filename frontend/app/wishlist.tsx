@@ -6,13 +6,16 @@ import {
     TouchableOpacity,
     Image,
     ActivityIndicator,
-    Alert,
     RefreshControl,
+    Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../api';
+import { showToast } from '../utils/toast';
+
+const { width } = Dimensions.get('window');
 
 interface WishlistItem {
     _id: string;
@@ -25,6 +28,7 @@ interface WishlistItem {
         metalType: string;
         weight: number;
         stock: number;
+        purity: string;
     };
 }
 
@@ -48,6 +52,7 @@ export default function Wishlist() {
             }
         } catch (error) {
             console.error('Error fetching wishlist:', error);
+            showToast.error('Failed to load your vault');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -63,11 +68,12 @@ export default function Wishlist() {
             });
             const data = await response.json();
             if (data.success) {
-                setWishlist(wishlist.filter((item) => item.product._id !== productId));
-                Alert.alert('Removed', 'Product removed from wishlist');
+                setWishlist(items => items.filter((item) => item.product._id !== productId));
+                showToast.success('Removed from vault');
             }
         } catch (error) {
             console.error('Error removing from wishlist:', error);
+            showToast.error('Could not remove item');
         }
     };
 
@@ -81,16 +87,15 @@ export default function Wishlist() {
             });
             const data = await response.json();
             if (data.success) {
-                Alert.alert('Success', 'Product added to cart', [
-                    {
-                        text: 'Remove from Wishlist',
-                        onPress: () => removeFromWishlist(productId),
-                    },
-                    { text: 'Keep in Wishlist', style: 'cancel' },
-                ]);
+                showToast.success('Moved to cart successfully');
+                // Optional: Remove from wishlist after moving to cart
+                // removeFromWishlist(productId); 
+            } else {
+                showToast.error(data.message || 'Could not add to cart');
             }
         } catch (error) {
             console.error('Error adding to cart:', error);
+            showToast.error('Network error');
         }
     };
 
@@ -101,16 +106,23 @@ export default function Wishlist() {
 
     const renderItem = ({ item }: { item: WishlistItem }) => {
         if (!item.product) return null;
-        const totalPrice = item.product.price + item.product.makingCharges;
+
+        // Fix for NaN price: ensure values are numbers, default to 0
+        const price = Number(item.product.price) || 0;
+        const makingCharges = Number(item.product.makingCharges) || 0;
+        const totalPrice = price + makingCharges;
+
+        const isOutOfStock = item.product.stock === 0;
 
         return (
-            <View className="bg-white rounded-2xl mb-4 overflow-hidden border border-gray-100">
-                <TouchableOpacity
-                    className="flex-row"
-                    onPress={() => router.push(`/product_detail?id=${item.product._id}`)}
-                    activeOpacity={0.7}
-                >
-                    <View className="w-28 h-28 bg-gray-100 items-center justify-center">
+            <TouchableOpacity
+                className="bg-white rounded-[32px] mb-6 shadow-sm border border-gray-100 overflow-hidden"
+                onPress={() => router.push(`/product_detail?id=${item.product._id}`)}
+                activeOpacity={0.9}
+            >
+                <View className="flex-row p-3">
+                    {/* Image Section */}
+                    <View className="w-32 h-32 bg-gray-50 rounded-[24px] overflow-hidden mr-4 relative">
                         {item.product.images && item.product.images.length > 0 ? (
                             <Image
                                 source={{ uri: item.product.images[0] }}
@@ -118,51 +130,77 @@ export default function Wishlist() {
                                 resizeMode="cover"
                             />
                         ) : (
-                            <Ionicons name="image-outline" size={32} color="#d1d5db" />
+                            <View className="w-full h-full items-center justify-center">
+                                <Ionicons name="image-outline" size={32} color="#d1d5db" />
+                            </View>
+                        )}
+                        {isOutOfStock && (
+                            <View className="absolute inset-0 bg-black/40 items-center justify-center">
+                                <Text className="text-white text-[10px] font-black uppercase tracking-widest bg-red-500 px-2 py-1 rounded-full">
+                                    Sold Out
+                                </Text>
+                            </View>
                         )}
                     </View>
 
-                    <View className="flex-1 p-4">
-                        <View className="flex-row justify-between items-start mb-2">
-                            <Text className="text-gray-900 font-bold text-base flex-1 mr-2" numberOfLines={2}>
-                                {item.product.name}
-                            </Text>
-                            <TouchableOpacity onPress={() => removeFromWishlist(item.product._id)}>
-                                <Ionicons name="close-circle" size={24} color="#ef4444" />
-                            </TouchableOpacity>
-                        </View>
+                    {/* Content Section */}
+                    <View className="flex-1 justify-between py-1">
+                        <View>
+                            <View className="flex-row justify-between items-start">
+                                <Text className="text-gray-900 font-bold text-[13px] flex-1 mr-2 leading-5" numberOfLines={2}>
+                                    {item.product.name}
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={(e) => {
+                                        e.stopPropagation();
+                                        removeFromWishlist(item.product._id);
+                                    }}
+                                    className="bg-gray-50 p-1.5 rounded-full"
+                                >
+                                    <Ionicons name="close" size={16} color="#ef4444" />
+                                </TouchableOpacity>
+                            </View>
 
-                        <View className="flex-row items-center mb-2">
-                            <View className="bg-primary-50 px-2 py-1 rounded-md mr-2">
-                                <Text className="text-primary-600 text-xs font-semibold">
-                                    {item.product.metalType}
+                            <View className="flex-row items-center mt-2 space-x-2">
+                                <View className="bg-primary-50 px-2 py-1 rounded-lg">
+                                    <Text className="text-primary-700 text-[10px] font-black uppercase tracking-wider">
+                                        {item.product.metalType}
+                                    </Text>
+                                </View>
+                                <Text className="text-gray-400 text-[10px] font-bold">
+                                    {item.product.weight}g
                                 </Text>
                             </View>
-                            <Text className="text-gray-500 text-xs">{item.product.weight}g</Text>
                         </View>
 
-                        <View className="flex-row items-center justify-between mt-2">
+                        <View className="flex-row items-end justify-between mt-2">
                             <View>
-                                <Text className="text-primary-600 font-bold text-lg">
+                                <Text className="text-primary-600 font-black text-lg">
                                     ₹{totalPrice.toLocaleString()}
                                 </Text>
-                                {item.product.stock === 0 && (
-                                    <Text className="text-red-500 text-xs font-semibold mt-1">Out of Stock</Text>
-                                )}
                             </View>
+
                             <TouchableOpacity
-                                className={`px-4 py-2 rounded-xl flex-row items-center ${item.product.stock > 0 ? 'bg-primary-500' : 'bg-gray-300'
+                                className={`px-4 py-2.5 rounded-2xl flex-row items-center space-x-1 ${isOutOfStock ? 'bg-gray-100' : 'bg-gray-900'
                                     }`}
                                 onPress={() => moveToCart(item.product._id)}
-                                disabled={item.product.stock === 0}
+                                disabled={isOutOfStock}
                             >
-                                <Ionicons name="cart-outline" size={16} color="white" />
-                                <Text className="text-white font-bold text-sm ml-1">Add to Cart</Text>
+                                <Ionicons
+                                    name={isOutOfStock ? "ban-outline" : "cart-outline"}
+                                    size={16}
+                                    color={isOutOfStock ? "#9ca3af" : "white"}
+                                />
+                                {!isOutOfStock && (
+                                    <Text className="text-white font-bold text-[10px] ml-1 uppercase tracking-wide">
+                                        Add
+                                    </Text>
+                                )}
                             </TouchableOpacity>
                         </View>
                     </View>
-                </TouchableOpacity>
-            </View>
+                </View>
+            </TouchableOpacity>
         );
     };
 
@@ -175,23 +213,31 @@ export default function Wishlist() {
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView className="flex-1 bg-gray-50" edges={['top']}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            {/* Header */}
+            {/* Premium Header */}
             <View className="bg-white px-6 py-4 border-b border-gray-100">
                 <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center">
-                        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-                            <Ionicons name="arrow-back" size={24} color="#111827" />
+                        <TouchableOpacity
+                            onPress={() => router.back()}
+                            className="w-10 h-10 bg-gray-50 rounded-xl items-center justify-center mr-4"
+                        >
+                            <Ionicons name="arrow-back" size={20} color="#111827" />
                         </TouchableOpacity>
                         <View>
-                            <Text className="text-xl font-bold text-gray-900">Jewelry Vault</Text>
-                            <Text className="text-gray-500 text-sm">{wishlist.length} Items Secured</Text>
+                            <Text className="text-xl font-black text-gray-900">The Wishlist</Text>
+                            <Text className="text-gray-400 text-[10px] uppercase tracking-[2px] font-bold">
+                                {wishlist.length} Curated Items
+                            </Text>
                         </View>
                     </View>
-                    <TouchableOpacity onPress={() => router.push('/cart')}>
-                        <Ionicons name="cart-outline" size={24} color="#111827" />
+                    <TouchableOpacity
+                        onPress={() => router.push('/cart')}
+                        className="w-10 h-10 bg-gray-900 rounded-xl items-center justify-center shadow-lg shadow-gray-400/50"
+                    >
+                        <Ionicons name="cart-outline" size={20} color="white" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -201,19 +247,26 @@ export default function Wishlist() {
                 data={wishlist}
                 renderItem={renderItem}
                 keyExtractor={(item) => item._id}
-                contentContainerStyle={{ padding: 24 }}
+                contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
+                showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#f97316']} />
                 }
                 ListEmptyComponent={
-                    <View className="items-center justify-center py-20">
-                        <Ionicons name="shield-checkmark-outline" size={64} color="#d1d5db" />
-                        <Text className="text-gray-400 text-base mt-4 mb-6">Your vault is currently empty</Text>
+                    <View className="items-center justify-center py-20 px-10">
+                        <View className="w-24 h-24 bg-gray-100 rounded-full items-center justify-center mb-6">
+                            <Ionicons name="heart-dislike-outline" size={48} color="#9ca3af" />
+                        </View>
+                        <Text className="text-gray-900 font-bold text-xl mb-2 text-center">Your Wishlist is Empty</Text>
+                        <Text className="text-gray-500 text-center mb-10 leading-6">
+                            Start curating your personal collection of fine jewelry. Save your favorites here.
+                        </Text>
                         <TouchableOpacity
-                            className="bg-primary-500 px-6 py-3 rounded-xl"
+                            className="bg-primary-600 w-full py-4 rounded-2xl shadow-xl shadow-primary-500/30 flex-row justify-center items-center"
                             onPress={() => router.push('/products_browse')}
                         >
-                            <Text className="text-white font-bold">Browse Products</Text>
+                            <Text className="text-white font-black uppercase tracking-widest text-xs mr-2">Discover Collection</Text>
+                            <Ionicons name="arrow-forward" size={16} color="white" />
                         </TouchableOpacity>
                     </View>
                 }
