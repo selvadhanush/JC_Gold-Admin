@@ -3,7 +3,28 @@
 // For iOS Simulators use: http://localhost:5000
 // For physical devices, use your computer's local IP address (e.g., http://192.168.1.10:5000)
 
-export const BASE_URL = 'http://10.0.2.2:5000'; // Standard bridge for Android Emulator
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
+const getBaseUrl = () => {
+    // For Web, always use localhost
+    if (Platform.OS === 'web') return 'http://localhost:5000';
+
+    // For Physical Devices (Android/iOS) running via Expo Go
+    const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.debuggerHost;
+    if (hostUri) {
+        const ip = hostUri.split(':')[0];
+        return `http://${ip}:5000`;
+    }
+
+    // Fallback for Emulators
+    if (Platform.OS === 'android') return 'http://10.0.2.2:5000';
+
+    // Fallback for iOS Simulator
+    return 'http://localhost:5000';
+};
+
+export const BASE_URL = getBaseUrl(); // Standard bridge for Android Emulator
 
 import * as SecureStore from 'expo-secure-store';
 
@@ -99,6 +120,11 @@ export const API_ENDPOINTS = {
     ADMIN_GOLD_RATE: `${BASE_URL}/api/v1/admin/digital-gold/gold-rate`,
     ADMIN_DIGITAL_GOLD_APPROVE: (id) => `${BASE_URL}/api/v1/admin/digital-gold/approve/${id}`,
     ADMIN_DIGITAL_GOLD_REDEMPTION_APPROVE: (id) => `${BASE_URL}/api/v1/admin/digital-gold/redemption/approve/${id}`,
+    ADMIN_DIGITAL_GOLD_DASHBOARD_RATES: `${BASE_URL}/api/v1/admin/digital-gold/dashboard-rates`,
+
+    // Razorpay
+    BUYER_RAZORPAY_ORDER: `${BASE_URL}/api/v1/buyer/payments/razorpay-order`,
+    BUYER_RAZORPAY_VERIFY: `${BASE_URL}/api/v1/buyer/payments/verify`,
 };
 
 export const getAuthHeaders = async () => {

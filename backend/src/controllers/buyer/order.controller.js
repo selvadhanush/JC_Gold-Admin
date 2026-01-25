@@ -49,7 +49,7 @@ exports.placeOrder = async (req, res) => {
             taxAmount,
             shippingAmount,
             paymentMethod,
-            orderStatus: 'PENDING',
+            orderStatus: paymentMethod === 'ONLINE' ? 'PENDING_PAYMENT' : 'PENDING',
             paymentStatus: 'PENDING',
             shippingAddress: {
                 street: address.addressLine1 + (address.addressLine2 ? ', ' + address.addressLine2 : ''),
@@ -83,13 +83,21 @@ exports.placeOrder = async (req, res) => {
         cart.totalAmount = 0;
         await cart.save();
 
-        // Create Admin Notification
-        const { notifyAdmins } = require('../../utils/notification');
-        await notifyAdmins(['ORDER_ADMIN', 'SUPER_ADMIN'], {
-            title: 'New Order Received',
-            message: `A new order #${order._id.toString().slice(-6).toUpperCase()} has been placed.`,
-            type: 'ORDER_UPDATE'
-        });
+        // Only notify admins immediately for non-online payments (like COD)
+        if (paymentMethod !== 'ONLINE') {
+            const { notifyAdmins } = require('../../utils/notification');
+            await notifyAdmins(['ORDER_ADMIN', 'SUPER_ADMIN'], {
+                title: 'New Order Received',
+                message: `A new order #${order._id.toString().slice(-6).toUpperCase()} has been placed.`,
+                type: 'ORDER_UPDATE'
+            });
+        }
+
+        const populatedOrder = await Order.findById(order._id)
+            .populate({
+                path: 'orderItems',
+                populate: { path: 'product' },
+            });
 
         res.status(201).json({
             success: true,
@@ -141,7 +149,7 @@ exports.placeDirectOrder = async (req, res) => {
             taxAmount,
             shippingAmount,
             paymentMethod,
-            orderStatus: 'PENDING',
+            orderStatus: paymentMethod === 'ONLINE' ? 'PENDING_PAYMENT' : 'PENDING',
             paymentStatus: 'PENDING',
             shippingAddress: {
                 street: address.addressLine1 + (address.addressLine2 ? ', ' + address.addressLine2 : ''),
@@ -170,13 +178,15 @@ exports.placeDirectOrder = async (req, res) => {
                 populate: { path: 'product' },
             });
 
-        // Create Admin Notification
-        const { notifyAdmins } = require('../../utils/notification');
-        await notifyAdmins(['ORDER_ADMIN', 'SUPER_ADMIN'], {
-            title: 'New Direct Order',
-            message: `A new direct order #${order._id.toString().slice(-6).toUpperCase()} has been placed.`,
-            type: 'ORDER_UPDATE'
-        });
+        // Only notify admins immediately for non-online payments
+        if (paymentMethod !== 'ONLINE') {
+            const { notifyAdmins } = require('../../utils/notification');
+            await notifyAdmins(['ORDER_ADMIN', 'SUPER_ADMIN'], {
+                title: 'New Direct Order',
+                message: `A new direct order #${order._id.toString().slice(-6).toUpperCase()} has been placed.`,
+                type: 'ORDER_UPDATE'
+            });
+        }
 
         res.status(201).json({
             success: true,
@@ -197,7 +207,11 @@ exports.placeDirectOrder = async (req, res) => {
 // @access  Private (Buyer)
 exports.getOrders = async (req, res) => {
     try {
-        const orders = await Order.find({ user: req.buyer._id })
+        // Skip orders that are stuck in PENDING_PAYMENT to avoid confusing the user
+        const orders = await Order.find({
+            user: req.buyer._id,
+            orderStatus: { $ne: 'PENDING_PAYMENT' }
+        })
             .populate({
                 path: 'orderItems',
                 populate: { path: 'product', select: 'name images price' },

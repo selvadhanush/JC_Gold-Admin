@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { createPayment, getPayments, getPaymentById } = require('../../controllers/buyer/payment.controller');
+const {
+    createRazorpayOrder,
+    verifyPayment,
+    getPayments,
+    getPaymentById
+} = require('../../controllers/buyer/payment.controller');
 const { protectBuyer } = require('../../middlewares/buyerAuth.middleware');
 const { requireMpinVerified } = require('../../middlewares/requireMpinVerified.middleware');
 

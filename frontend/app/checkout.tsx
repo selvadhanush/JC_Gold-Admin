@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -7,6 +7,8 @@ import {
     Image,
     ActivityIndicator,
     Dimensions,
+    Alert,
+    Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
@@ -40,6 +42,9 @@ export default function Checkout() {
     const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>([]);
     const [directProduct, setDirectProduct] = useState<any>(null);
     const [directQuantity, setDirectQuantity] = useState<number>(1);
+    const [showRazorpayModal, setShowRazorpayModal] = useState(false);
+    const [rzpData, setRzpData] = useState<any>(null);
+    const [isSimulating, setIsSimulating] = useState(false);
 
     const isDirectBuy = !!productId;
 
@@ -114,7 +119,7 @@ export default function Checkout() {
         return checkoutItems.reduce((sum, item) => sum + ((item.product?.price || 0) * (item.quantity || 0)), 0);
     };
 
-    const handlePlaceOrder = async () => {
+    const handlePlaceOrder = useCallback(async () => {
         if (!selectedAddress) {
             showToast.error('Please select a delivery address');
             return;
@@ -127,18 +132,10 @@ export default function Checkout() {
             let endpoint;
 
             if (isDirectBuy) {
-                payload = {
-                    productId,
-                    quantity: directQuantity,
-                    addressId: selectedAddress,
-                    paymentMethod
-                };
+                payload = { productId, quantity: directQuantity, addressId: selectedAddress, paymentMethod };
                 endpoint = API_ENDPOINTS.BUYER_DIRECT_ORDER;
             } else {
-                payload = {
-                    addressId: selectedAddress,
-                    paymentMethod
-                };
+                payload = { addressId: selectedAddress, paymentMethod };
                 endpoint = API_ENDPOINTS.BUYER_ORDERS;
             }
 
@@ -150,8 +147,14 @@ export default function Checkout() {
 
             const data = await response.json();
             if (data.success) {
-                showToast.success('Order placed successfully!');
-                router.replace('/orders');
+                const order = data.data;
+
+                if (paymentMethod === 'ONLINE') {
+                    await initiateRazorpay(order._id);
+                } else {
+                    showToast.success('Order placed successfully!');
+                    router.replace('/orders');
+                }
             } else {
                 showToast.error(data.message || 'Failed to place order');
             }
@@ -161,6 +164,70 @@ export default function Checkout() {
         } finally {
             setPlacingOrder(false);
         }
+    }, [selectedAddress, isDirectBuy, productId, directQuantity, paymentMethod, router]);
+
+    const verifyPayment = useCallback(async (orderId: string, rzpOrderId: string, rzpPaymentId: string) => {
+        try {
+            setPlacingOrder(true);
+            const headers = await getAuthHeaders();
+
+            const response = await fetch(API_ENDPOINTS.BUYER_RAZORPAY_VERIFY, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    orderId,
+                    razorpay_order_id: rzpOrderId,
+                    razorpay_payment_id: rzpPaymentId,
+                    razorpay_signature: 'SIMULATED_SIGNATURE'
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showToast.success('Payment successful!');
+                router.replace('/orders');
+            } else {
+                showToast.error(data.message || 'Payment verification failed');
+            }
+        } catch (error) {
+            console.error('Verify Error:', error);
+        } finally {
+            setPlacingOrder(false);
+        }
+    }, [router]);
+
+    const initiateRazorpay = useCallback(async (orderId: string) => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.BUYER_RAZORPAY_ORDER, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ orderId })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setRzpData({
+                    ...data,
+                    orderId
+                });
+                setShowRazorpayModal(true);
+            }
+        } catch (error) {
+            console.error('Razorpay Init Error:', error);
+            showToast.error('Failed to initialize payment');
+        }
+    }, [verifyPayment]);
+
+    const handleSimulateSuccess = async () => {
+        if (!rzpData) return;
+        setIsSimulating(true);
+        // Artificial delay for realism
+        setTimeout(async () => {
+            await verifyPayment(rzpData.orderId, rzpData.order_id, 'pay_test_' + Date.now());
+            setIsSimulating(false);
+            setShowRazorpayModal(false);
+        }, 2000);
     };
 
     if (loading) {
@@ -188,9 +255,13 @@ export default function Checkout() {
                 <Text className="text-xl font-bold text-gray-900">{isDirectBuy ? 'Direct Purchase' : 'Final Checkout'}</Text>
             </View>
 
-            <ScrollView className="flex-1 px-6 py-4" showsVerticalScrollIndicator={false}>
-                {/* Delivery Address Section - UPDATED TO BE MORE PROMINENT */}
-                <View className="mb-8">
+            <ScrollView
+                className="flex-1 px-6"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingVertical: 24 }}
+            >
+                {/* Delivery Address Section */}
+                <View className="mb-10">
                     <View className="flex-row justify-between items-center mb-4">
                         <View>
                             <Text className="text-xl font-bold text-gray-900">Delivery Address</Text>
@@ -210,23 +281,24 @@ export default function Checkout() {
                                 <TouchableOpacity
                                     key={addr._id}
                                     onPress={() => setSelectedAddress(addr._id)}
-                                    className={`p-5 rounded-3xl border-2 shadow-sm ${selectedAddress === addr._id ? 'bg-primary-50 border-primary-500' : 'bg-white border-gray-100'}`}
+                                    activeOpacity={0.7}
+                                    className={`p-6 rounded-[32px] border-2 shadow-sm ${selectedAddress === addr._id ? 'bg-orange-50/50 border-orange-500 shadow-orange-100' : 'bg-white border-gray-100'}`}
                                 >
                                     <View className="flex-row items-center">
-                                        <View className={`w-6 h-6 rounded-full border-2 items-center justify-center mr-4 ${selectedAddress === addr._id ? 'border-primary-600 bg-primary-600' : 'border-gray-300'}`}>
+                                        <View className={`w-6 h-6 rounded-full border-2 items-center justify-center mr-4 ${selectedAddress === addr._id ? 'border-orange-600 bg-orange-600' : 'border-gray-200'}`}>
                                             {selectedAddress === addr._id && <View className="w-2 h-2 bg-white rounded-full" />}
                                         </View>
                                         <View className="flex-1">
-                                            <View className="flex-row items-center mb-1">
-                                                <Text className="font-bold text-gray-900 text-lg mr-2">{addr.fullName}</Text>
+                                            <View className="flex-row items-center mb-1.5">
+                                                <Text className="font-black text-gray-900 text-lg mr-2 uppercase tracking-tight">{addr.fullName}</Text>
                                                 {addr.isDefault && (
-                                                    <View className="bg-primary-100 px-2 py-0.5 rounded-md">
-                                                        <Text className="text-primary-700 text-[10px] font-bold uppercase">Default</Text>
+                                                    <View className="bg-orange-100 px-2.5 py-1 rounded-lg">
+                                                        <Text className="text-orange-700 text-[9px] font-black uppercase tracking-widest">Default</Text>
                                                     </View>
                                                 )}
                                             </View>
-                                            <Text className="text-gray-600" numberOfLines={1}>{addr.addressLine1}</Text>
-                                            <Text className="text-gray-500 text-sm">{addr.city}, {addr.state} - {addr.pincode}</Text>
+                                            <Text className="text-gray-500 font-medium leading-5 mb-1" numberOfLines={1}>{addr.addressLine1}</Text>
+                                            <Text className="text-gray-400 text-xs font-bold tracking-wider">{addr.city}, {addr.state} - {addr.pincode}</Text>
                                         </View>
                                     </View>
                                 </TouchableOpacity>
@@ -249,17 +321,22 @@ export default function Checkout() {
                     )}
                 </View>
 
-                {/* Items Section */}
-                <View className="mb-8">
-                    <Text className="text-xl font-bold text-gray-900 mb-4">Items Summary</Text>
+                <View className="mb-10">
+                    <Text className="text-xl font-black text-gray-900 mb-5">Items Summary</Text>
                     {isDirectBuy && directProduct ? (
-                        <View className="bg-white p-4 rounded-3xl flex-row items-center border border-gray-100 shadow-sm">
+                        <View className="bg-white p-6 rounded-[32px] flex-row items-center border border-gray-100 shadow-sm">
                             <View className="bg-gray-50 p-2 rounded-2xl mr-4">
-                                <Image
-                                    source={{ uri: directProduct.images[0] }}
-                                    className="w-20 h-20 rounded-xl"
-                                    resizeMode="contain"
-                                />
+                                {directProduct.images && directProduct.images.length > 0 ? (
+                                    <Image
+                                        source={{ uri: directProduct.images[0] }}
+                                        className="w-20 h-20 rounded-xl"
+                                        resizeMode="contain"
+                                    />
+                                ) : (
+                                    <View className="w-20 h-20 rounded-xl bg-gray-100 items-center justify-center">
+                                        <Ionicons name="image-outline" size={24} color="#d1d5db" />
+                                    </View>
+                                )}
                             </View>
                             <View className="flex-1">
                                 <Text className="font-bold text-gray-900 text-lg" numberOfLines={1}>{directProduct.name}</Text>
@@ -281,53 +358,62 @@ export default function Checkout() {
                                         </TouchableOpacity>
                                     </View>
                                 </View>
-                                <Text className="text-primary-600 font-bold text-lg mt-2">₹{directProduct.price.toLocaleString()}</Text>
+                                <Text className="text-primary-600 font-bold text-lg mt-2">₹{(directProduct.price || 0).toLocaleString()}</Text>
                             </View>
                         </View>
                     ) : (
                         <View className="space-y-3">
-                            {checkoutItems.map((item) => (
-                                <View key={item._id} className="bg-white p-4 rounded-2xl flex-row items-center border border-gray-100">
-                                    <Image
-                                        source={{ uri: item.product.images[0] }}
-                                        className="w-14 h-14 rounded-lg mr-4"
-                                    />
-                                    <View className="flex-1">
-                                        <Text className="font-bold text-gray-900" numberOfLines={1}>{item.product.name}</Text>
-                                        <Text className="text-gray-500 text-sm">Qty: {item.quantity}</Text>
+                            {checkoutItems.map((item) => {
+                                if (!item.product) return null;
+                                return (
+                                    <View key={item._id} className="bg-white p-4 rounded-2xl flex-row items-center border border-gray-100">
+                                        {item.product.images && item.product.images.length > 0 ? (
+                                            <Image
+                                                source={{ uri: item.product.images[0] }}
+                                                className="w-14 h-14 rounded-lg mr-4"
+                                            />
+                                        ) : (
+                                            <View className="w-14 h-14 rounded-lg mr-4 bg-gray-100 items-center justify-center">
+                                                <Ionicons name="image-outline" size={20} color="#d1d5db" />
+                                            </View>
+                                        )}
+                                        <View className="flex-1">
+                                            <Text className="font-bold text-gray-900" numberOfLines={1}>{item.product.name}</Text>
+                                            <Text className="text-gray-500 text-sm">Qty: {item.quantity}</Text>
+                                        </View>
+                                        <Text className="font-bold text-primary-600">₹{(item.product.price || 0).toLocaleString()}</Text>
                                     </View>
-                                    <Text className="font-bold text-primary-600">₹{item.product.price.toLocaleString()}</Text>
-                                </View>
-                            ))}
+                                );
+                            })}
                         </View>
                     )}
                 </View>
 
                 {/* Payment Method */}
-                <View className="mb-8">
-                    <Text className="text-xl font-bold text-gray-900 mb-4">Payment Method</Text>
+                <View className="mb-10">
+                    <Text className="text-xl font-black text-gray-900 mb-5">Payment Method</Text>
                     <View className="flex-row gap-3">
                         {['COD', 'ONLINE', 'WALLET'].map((method) => (
                             <TouchableOpacity
                                 key={method}
                                 onPress={() => setPaymentMethod(method as any)}
-                                className={`flex-1 p-5 rounded-3xl border-2 items-center justify-center ${paymentMethod === method ? 'bg-primary-50 border-primary-500 shadow-sm' : 'bg-white border-gray-100'}`}
+                                className={`flex-1 p-5 rounded-3xl border-2 items-center justify-center ${paymentMethod === method ? 'bg-orange-50 border-orange-500' : 'bg-white border-gray-100'}`}
                             >
-                                <View className={`w-10 h-10 rounded-full items-center justify-center mb-2 ${paymentMethod === method ? 'bg-primary-100' : 'bg-gray-50'}`}>
+                                <View className={`w-10 h-10 rounded-full items-center justify-center mb-2 ${paymentMethod === method ? 'bg-orange-100' : 'bg-gray-50'}`}>
                                     <Ionicons
-                                        name={method === 'COD' ? 'cash' : method === 'ONLINE' ? 'card' : 'wallet'}
+                                        name={method === 'COD' ? 'cash-outline' : method === 'ONLINE' ? 'card-outline' : 'wallet-outline'}
                                         size={22}
                                         color={paymentMethod === method ? '#f97316' : '#9ca3af'}
                                     />
                                 </View>
-                                <Text className={`text-xs font-bold ${paymentMethod === method ? 'text-primary-700' : 'text-gray-500'}`}>{method}</Text>
+                                <Text className={`text-xs font-bold ${paymentMethod === method ? 'text-orange-700' : 'text-gray-500'}`}>{method}</Text>
                             </TouchableOpacity>
                         ))}
                     </View>
                 </View>
 
                 {/* Price Details */}
-                <View className="bg-white p-8 rounded-[40px] border border-gray-100 mb-32 shadow-sm">
+                <View className="bg-white p-8 rounded-[32px] border border-gray-100 mb-32 shadow-sm">
                     <Text className="text-gray-900 font-bold text-xl mb-6">Execution Summary</Text>
                     <View className="space-y-4">
                         <View className="flex-row justify-between">
@@ -352,30 +438,128 @@ export default function Checkout() {
             </ScrollView>
 
             {/* Floating Bottom Action */}
-            <View className="absolute bottom-0 left-0 right-0 bg-white px-6 pt-4 pb-10 border-t border-gray-100 shadow-2xl">
+            <View className="bg-white px-6 pt-6 pb-12 border-t border-gray-100 shadow-[0_-20px_50px_rgba(0,0,0,0.05)]">
                 <TouchableOpacity
                     onPress={handlePlaceOrder}
                     disabled={placingOrder || !selectedAddress}
-                    className={`h-16 rounded-2xl flex-row items-center justify-center px-8 ${placingOrder || !selectedAddress ? 'bg-gray-300' : 'bg-primary-600 shadow-xl shadow-primary-600/40'}`}
+                    activeOpacity={0.8}
+                    className={`h-16 rounded-[24px] flex-row items-center px-8 ${placingOrder || !selectedAddress ? 'bg-gray-200' : 'bg-primary-600 shadow-xl shadow-primary-200'}`}
                 >
                     {placingOrder ? (
-                        <ActivityIndicator color="white" />
+                        <View className="flex-1 items-center justify-center">
+                            <ActivityIndicator color="white" />
+                        </View>
                     ) : (
                         <>
                             <View className="flex-1">
-                                <Text className="text-white/70 text-xs font-bold uppercase">Confirm & Pay</Text>
+                                <Text className="text-white/60 text-[10px] font-black uppercase tracking-widest">Confirm & Pay</Text>
                                 <Text className="text-white font-black text-xl">₹{total.toLocaleString()}</Text>
                             </View>
-                            <View className="bg-white/20 p-2 rounded-xl">
-                                <Ionicons name="chevron-forward" size={24} color="white" />
+                            <View className="bg-white/20 w-10 h-10 rounded-xl items-center justify-center">
+                                <Ionicons name="arrow-forward" size={20} color="white" />
                             </View>
                         </>
                     )}
                 </TouchableOpacity>
                 {!selectedAddress && !loading && (
-                    <Text className="text-red-500 text-center mt-3 font-semibold">⚠️ Please select a delivery address</Text>
+                    <View className="flex-row items-center justify-center mt-4">
+                        <Ionicons name="alert-circle" size={16} color="#ef4444" />
+                        <Text className="text-red-500 ml-2 font-bold text-xs uppercase tracking-wider">Please select a delivery address</Text>
+                    </View>
                 )}
             </View>
+
+            {/* Razorpay Simulation Modal */}
+            <Modal
+                transparent={true}
+                visible={showRazorpayModal}
+                animationType="fade"
+                onRequestClose={() => !isSimulating && setShowRazorpayModal(false)}
+            >
+                <View className="flex-1 bg-black/60 items-center justify-center px-6">
+                    <View className="bg-white w-full rounded-[40px] overflow-hidden shadow-2xl">
+                        {/* Razorpay Header */}
+                        <View className="bg-[#242633] px-8 py-8 flex-row justify-between items-center">
+                            <View className="flex-row items-center">
+                                <View className="w-10 h-10 bg-[#3399FF] rounded-2xl items-center justify-center mr-4 shadow-lg shadow-blue-500/50">
+                                    <Ionicons name="flash" size={22} color="white" />
+                                </View>
+                                <View>
+                                    <Text className="text-white/40 font-black text-[10px] tracking-widest uppercase mb-0.5">Test Environment</Text>
+                                    <View className="flex-row items-center">
+                                        <Text className="text-white font-black text-xl">Razorpay</Text>
+                                        <Text className="text-white/60 font-medium text-xl ml-1">Sim</Text>
+                                    </View>
+                                </View>
+                            </View>
+                            {!isSimulating && (
+                                <TouchableOpacity
+                                    onPress={() => setShowRazorpayModal(false)}
+                                    className="w-10 h-10 bg-white/10 rounded-2xl items-center justify-center"
+                                >
+                                    <Ionicons name="close" size={24} color="white" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        <View className="p-8">
+                            <View className="mb-10 items-center">
+                                <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[3px] mb-3">Total Amount Payable</Text>
+                                <Text className="text-gray-900 text-5xl font-black italic">
+                                    <Text className="text-2xl not-italic mr-1 text-gray-400">₹</Text>
+                                    {rzpData ? (rzpData.amount / 100).toLocaleString() : '0'}
+                                </Text>
+                                <View className="mt-4 bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+                                    <Text className="text-gray-400 text-[10px] font-bold">ID: {rzpData?.order_id}</Text>
+                                </View>
+                            </View>
+
+                            <View className="bg-blue-50/50 rounded-[32px] p-6 mb-10 border border-blue-100/50">
+                                <View className="flex-row items-center mb-3">
+                                    <View className="w-6 h-6 bg-[#3399FF] rounded-full items-center justify-center mr-2">
+                                        <Ionicons name="shield-checkmark" size={14} color="white" />
+                                    </View>
+                                    <Text className="text-[#242633] font-black text-xs uppercase tracking-wider">Trusted Payment Simulation</Text>
+                                </View>
+                                <Text className="text-gray-500 text-xs leading-5">Confirming this transaction will mark your order as **CONFIRMED** in our system. This is a secure testing environment.</Text>
+                            </View>
+
+                            {isSimulating ? (
+                                <View className="py-6 items-center">
+                                    <ActivityIndicator size="large" color="#3399FF" />
+                                    <Text className="text-[#3399FF] font-black text-[10px] uppercase tracking-[4px] mt-6 italic">Authorizing...</Text>
+                                </View>
+                            ) : (
+                                <View className="flex-row items-center justify-between">
+                                    <TouchableOpacity
+                                        onPress={() => setShowRazorpayModal(false)}
+                                        className="h-14 px-8 bg-gray-50 rounded-2xl items-center justify-center border border-gray-100"
+                                    >
+                                        <Text className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Back</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={handleSimulateSuccess}
+                                        activeOpacity={0.9}
+                                        className="flex-1 h-14 ml-4 bg-[#3399FF] rounded-2xl shadow-lg shadow-blue-500/30 flex-row items-center justify-center px-4"
+                                    >
+                                        <Text className="text-white font-black uppercase tracking-[1px] text-[11px]">Simulate Success</Text>
+                                        <View className="ml-2 bg-white/20 p-1 rounded-lg">
+                                            <Ionicons name="checkmark" size={14} color="white" />
+                                        </View>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+
+                        <View className="bg-gray-50 py-6 items-center border-t border-gray-100">
+                            <View className="flex-row items-center">
+                                <Ionicons name="lock-closed" size={10} color="#9ca3af" />
+                                <Text className="text-gray-400 text-[9px] font-black uppercase tracking-[3px] ml-2">Secure Test Session</Text>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

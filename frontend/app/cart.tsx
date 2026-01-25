@@ -113,40 +113,50 @@ export default function Cart() {
     const tax = subtotal * 0.03;
     const total = subtotal + tax;
 
-    const renderItem = ({ item }: { item: CartItem }) => (
-        <View className="bg-white rounded-[32px] mb-6 overflow-hidden border border-gray-100 shadow-sm p-4">
-            <View className="flex-row">
-                <View className="w-24 h-24 bg-gray-50 rounded-[24px] overflow-hidden border border-gray-100">
-                    <Image source={{ uri: item.product.images[0] }} className="w-full h-full" resizeMode="cover" />
-                </View>
-                <View className="flex-1 ml-4 justify-between">
-                    <View>
-                        <View className="flex-row justify-between items-start">
-                            <Text className="text-gray-900 font-bold text-sm flex-1 mr-2" numberOfLines={2}>{item.product.name}</Text>
-                            <TouchableOpacity onPress={() => removeItem(item._id)}>
-                                <Ionicons name="close-circle-outline" size={24} color="#ef4444" />
-                            </TouchableOpacity>
-                        </View>
-                        <Text className="text-gray-400 text-[10px] uppercase font-black tracking-widest mt-1">
-                            {item.product.specifications?.metalType || 'JEWELRY'} • {item.product.specifications?.weight || 0}g
-                        </Text>
+    const renderItem = ({ item }: { item: CartItem }) => {
+        if (!item.product) return null;
+
+        return (
+            <View className="bg-white rounded-[32px] mb-6 overflow-hidden border border-gray-100 shadow-sm p-4">
+                <View className="flex-row">
+                    <View className="w-24 h-24 bg-gray-50 rounded-[24px] overflow-hidden border border-gray-100">
+                        {item.product.images && item.product.images.length > 0 ? (
+                            <Image source={{ uri: item.product.images[0] }} className="w-full h-full" resizeMode="cover" />
+                        ) : (
+                            <View className="w-full h-full items-center justify-center">
+                                <Ionicons name="image-outline" size={32} color="#d1d5db" />
+                            </View>
+                        )}
                     </View>
-                    <View className="flex-row justify-between items-end">
-                        <View className="flex-row items-center bg-gray-50 rounded-2xl px-1 py-1 border border-gray-100">
-                            <TouchableOpacity onPress={() => updateQuantity(item._id, item.quantity - 1)} className="w-8 h-8 items-center justify-center">
-                                <Ionicons name="remove" size={16} color="#111827" />
-                            </TouchableOpacity>
-                            <Text className="mx-3 font-black text-gray-900">{item.quantity}</Text>
-                            <TouchableOpacity onPress={() => updateQuantity(item._id, item.quantity + 1)} className="w-8 h-8 items-center justify-center">
-                                <Ionicons name="add" size={16} color="#111827" />
-                            </TouchableOpacity>
+                    <View className="flex-1 ml-4 justify-between">
+                        <View>
+                            <View className="flex-row justify-between items-start">
+                                <Text className="text-gray-900 font-bold text-sm flex-1 mr-2" numberOfLines={2}>{item.product.name}</Text>
+                                <TouchableOpacity onPress={() => removeItem(item._id)}>
+                                    <Ionicons name="close-circle-outline" size={24} color="#ef4444" />
+                                </TouchableOpacity>
+                            </View>
+                            <Text className="text-gray-400 text-[10px] uppercase font-black tracking-widest mt-1">
+                                {item.product.specifications?.metalType || 'JEWELRY'} • {item.product.specifications?.weight || 0}g
+                            </Text>
                         </View>
-                        <Text className="text-primary-600 font-black text-lg">₹{(item.product.price * item.quantity).toLocaleString()}</Text>
+                        <View className="flex-row justify-between items-end">
+                            <View className="flex-row items-center bg-gray-50 rounded-2xl px-1 py-1 border border-gray-100">
+                                <TouchableOpacity onPress={() => updateQuantity(item._id, item.quantity - 1)} className="w-8 h-8 items-center justify-center">
+                                    <Ionicons name="remove" size={16} color="#111827" />
+                                </TouchableOpacity>
+                                <Text className="mx-3 font-black text-gray-900">{item.quantity}</Text>
+                                <TouchableOpacity onPress={() => updateQuantity(item._id, item.quantity + 1)} className="w-8 h-8 items-center justify-center">
+                                    <Ionicons name="add" size={16} color="#111827" />
+                                </TouchableOpacity>
+                            </View>
+                            <Text className="text-primary-600 font-black text-lg">₹{(item.product.price * item.quantity).toLocaleString()}</Text>
+                        </View>
                     </View>
                 </View>
             </View>
-        </View>
-    );
+        );
+    };
 
     const renderSkeleton = () => (
         <View className="px-6 py-6">

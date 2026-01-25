@@ -12,12 +12,12 @@ const mongoose = require('mongoose');
 // @access  Private (Admin)
 exports.setGoldRate = async (req, res, next) => {
     try {
-        const { date, metalType, ratePerGram, source } = req.body;
+        const { date, metalType, ratePerGram, purity, source } = req.body;
         const normalizedDate = new Date(date);
         normalizedDate.setHours(0, 0, 0, 0);
 
         const goldRate = await GoldRate.findOneAndUpdate(
-            { date: normalizedDate, metalType },
+            { date: normalizedDate, metalType, purity: purity || '24K' },
             { ratePerGram, source, createdBy: req.admin._id, isActive: true },
             { new: true, upsert: true, runValidators: true }
         );
@@ -40,6 +40,49 @@ exports.getGoldRates = async (req, res, next) => {
         res.status(200).json({
             success: true,
             data: rates
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// @desc    Get latest dashboard rates
+// @route   GET /api/v1/admin/digital-gold/dashboard-rates
+// @access  Public
+exports.getLatestDashboardRates = async (req, res, next) => {
+    try {
+        const types = [
+            { metalType: 'GOLD', purity: '24K' },
+            { metalType: 'GOLD', purity: '22K' },
+            { metalType: 'GOLD', purity: '18K' },
+            { metalType: 'SILVER', purity: 'FINE' },
+            { metalType: 'SILVER', purity: 'STERLING' },
+            { metalType: 'SILVER', purity: 'BRITANNIA' },
+        ];
+
+        const results = await Promise.all(types.map(async (t) => {
+            // Fetch two latest rates to calculate change
+            const rates = await GoldRate.find({
+                metalType: t.metalType,
+                purity: t.purity,
+                isActive: true
+            }).sort({ date: -1 }).limit(2);
+
+            const current = rates[0];
+            const previous = rates[1];
+            const change = (current && previous) ? (current.ratePerGram - previous.ratePerGram) : 0;
+
+            return {
+                ...t,
+                rate: current ? current.ratePerGram : null,
+                change: change,
+                hasHistory: !!previous
+            };
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: results
         });
     } catch (err) {
         next(err);
@@ -100,7 +143,7 @@ exports.approveTransaction = async (req, res, next) => {
         // Notify Buyer
         await notifyRecipient(transaction.user, 'User', {
             title: `Gold Purchase ${status}`,
-            message: status === 'APPROVED' 
+            message: status === 'APPROVED'
                 ? `Your purchase of ${transaction.goldGrams}g gold has been approved and added to your wallet.`
                 : `Your gold purchase request has been rejected. Reason: ${rejectionReason || 'N/A'}`,
             type: 'GOLD_TRANSACTION'
@@ -183,6 +226,56 @@ exports.approveRedemption = async (req, res, next) => {
     } catch (err) {
         await session.abortTransaction();
         session.endSession();
+        next(err);
+    }
+};
+
+// @desc    Get all redemption requests
+// @route   GET /api/v1/admin/digital-gold/redemptions
+// @access  Private (FINANCE_ADMIN, ORDER_ADMIN, SUPER_ADMIN)
+exports.getRedemptions = async (req, res, next) => {
+    try {
+        const { status, redeemType } = req.query;
+        let query = {};
+
+        if (status) query.status = status;
+        if (redeemType) query.redeemType = redeemType;
+
+        const redemptions = await RedemptionRequest.find(query)
+            .populate('user', 'name email phoneNumber')
+            .sort('-createdAt');
+
+        res.status(200).json({
+            success: true,
+            count: redemptions.length,
+            data: redemptions
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// @desc    Get all digital gold transactions
+// @route   GET /api/v1/admin/digital-gold/transactions
+// @access  Private (FINANCE_ADMIN, ORDER_ADMIN, SUPER_ADMIN)
+exports.getTransactions = async (req, res, next) => {
+    try {
+        const { status, type } = req.query;
+        let query = {};
+
+        if (status) query.status = status;
+        if (type) query.type = type;
+
+        const transactions = await DigitalGoldTransaction.find(query)
+            .populate('user', 'name email phoneNumber')
+            .sort('-createdAt');
+
+        res.status(200).json({
+            success: true,
+            count: transactions.length,
+            data: transactions
+        });
+    } catch (err) {
         next(err);
     }
 };

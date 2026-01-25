@@ -43,7 +43,8 @@ exports.getStats = async (req, res, next) => {
         const dailyStats = await Order.aggregate([
             {
                 $match: {
-                    createdAt: { $gte: startDate }
+                    createdAt: { $gte: startDate },
+                    orderStatus: { $ne: 'PENDING_PAYMENT' }
                 }
             },
             {
@@ -62,6 +63,7 @@ exports.getStats = async (req, res, next) => {
 
         // Orders by Status
         const ordersByStatus = await Order.aggregate([
+            { $match: { orderStatus: { $ne: 'PENDING_PAYMENT' } } },
             { $group: { _id: '$orderStatus', count: { $sum: 1 } } }
         ]);
 
@@ -93,7 +95,7 @@ exports.getStats = async (req, res, next) => {
         ]);
 
         // Total orders count (all time)
-        const totalOrders = await Order.countDocuments();
+        const totalOrders = await Order.countDocuments({ orderStatus: { $ne: 'PENDING_PAYMENT' } });
 
         // Support Tickets notification count (OPEN or IN_PROGRESS)
         const Support = require('../models/Support');

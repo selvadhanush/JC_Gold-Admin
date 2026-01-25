@@ -8,6 +8,9 @@ const validate = (schema) => (req, res, next) => {
     const { error } = validationResult;
 
     if (error) {
+        console.log('=== VALIDATION ERROR ===');
+        console.log('Body:', req.body);
+        console.log('Error:', error.details[0].message);
         return res.status(400).json({
             success: false,
             message: error.details[0].message,

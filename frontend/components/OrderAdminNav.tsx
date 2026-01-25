@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 
 interface OrderAdminNavProps {
-    activeTab: 'dashboard' | 'orders' | 'pending' | 'manage' | 'shipped';
+    activeTab: 'dashboard' | 'orders' | 'pending' | 'manage' | 'shipped' | 'gold';
 }
 
 export default function OrderAdminNav({ activeTab }: OrderAdminNavProps) {
@@ -15,6 +15,7 @@ export default function OrderAdminNav({ activeTab }: OrderAdminNavProps) {
         { id: 'dashboard', label: 'Home', icon: 'home-outline', activeIcon: 'home', route: '/Orderadmin' },
         { id: 'orders', label: 'Orders', icon: 'receipt-outline', activeIcon: 'receipt', route: '/Orderadmin/orders' },
         { id: 'pending', label: 'Pending', icon: 'time-outline', activeIcon: 'time', route: '/Orderadmin/pending' },
+        { id: 'gold', label: 'Gold', icon: 'diamond-outline', activeIcon: 'diamond', route: '/Orderadmin/digital_gold' },
         { id: 'manage', label: 'Manage', icon: 'settings-outline', activeIcon: 'settings', route: '/Orderadmin/manage' },
         { id: 'shipped', label: 'Shipped', icon: 'airplane-outline', activeIcon: 'airplane', route: '/Orderadmin/shipped' },
     ];
@@ -41,44 +42,31 @@ export default function OrderAdminNav({ activeTab }: OrderAdminNavProps) {
                         <TouchableOpacity
                             key={tab.id}
                             onPress={() => router.replace(tab.route as any)}
-                            className="items-center justify-center flex-1 py-3"
+                            className="items-center justify-center flex-1"
                             activeOpacity={0.6}
                         >
                             <View
-                                className={`items-center justify-center ${isActive ? '' : 'opacity-50'
-                                    }`}
+                                className={`items-center justify-center ${isActive ? '' : 'opacity-60'}`}
                             >
                                 <View
-                                    className={`items-center justify-center rounded-2xl px-4 py-2 ${isActive ? 'bg-blue-50' : ''
-                                        }`}
-                                    style={{
-                                        minWidth: 56,
-                                    }}
+                                    className={`items-center justify-center rounded-xl px-2 py-1.5 ${isActive ? 'bg-blue-50' : ''}`}
+                                    style={{ minWidth: 45 }}
                                 >
                                     <Ionicons
                                         name={(isActive ? tab.activeIcon : tab.icon) as any}
-                                        size={26}
+                                        size={22}
                                         color={isActive ? '#2563eb' : '#64748b'}
                                     />
                                     <Text
-                                        className={`text-[9px] font-bold uppercase tracking-wide mt-1 ${isActive ? 'text-blue-600' : 'text-slate-500'
-                                            }`}
-                                        style={{
-                                            letterSpacing: 0.5,
-                                        }}
+                                        className={`text-[7.5px] font-black uppercase tracking-tight mt-1 ${isActive ? 'text-blue-600' : 'text-slate-500'}`}
+                                        numberOfLines={1}
                                     >
                                         {tab.label}
                                     </Text>
                                 </View>
                                 {isActive && (
                                     <View
-                                        className="absolute -bottom-1 w-8 h-1 rounded-full bg-blue-600"
-                                        style={{
-                                            shadowColor: '#2563eb',
-                                            shadowOffset: { width: 0, height: 2 },
-                                            shadowOpacity: 0.4,
-                                            shadowRadius: 4,
-                                        }}
+                                        className="absolute -bottom-1 w-6 h-0.5 rounded-full bg-blue-600"
                                     />
                                 )}
                             </View>

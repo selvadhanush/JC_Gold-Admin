@@ -54,7 +54,9 @@ app.use('/api/v1/buyer/kyc', require('./routes/buyer/kyc.routes'));
 app.use('/api/v1/buyer/mpin', require('./routes/buyer/mpin.routes'));
 
 // Admin Digital Gold routes
+console.log('--- ATTEMPTING TO MOUNT ADMIN DIGITAL GOLD ROUTES ---');
 app.use('/api/v1/admin/digital-gold', require('./routes/adminDigitalGold.routes'));
+console.log('--- ADMIN DIGITAL GOLD ROUTES MOUNTED ---');
 
 // Admin KYC routes
 app.use('/api/v1/admin/kyc', require('./routes/admin/kyc.routes'));

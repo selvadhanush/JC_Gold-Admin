@@ -10,7 +10,7 @@ const checkLowStock = require('../utils/stockAlert');
 // @access  Private (Admin)
 exports.getOrders = async (req, res, next) => {
     try {
-        const orders = await Order.find()
+        const orders = await Order.find({ orderStatus: { $ne: 'PENDING_PAYMENT' } })
             .populate('user', 'name email')
             .sort('-createdAt');
 
