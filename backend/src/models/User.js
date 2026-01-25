@@ -41,6 +41,23 @@ const userSchema = new mongoose.Schema({
         silverBalance: { type: Number, default: 0 }, // in grams
         cashBalance: { type: Number, default: 0 },
     },
+    mpin: {
+        hash: {
+            type: String,
+            select: false  // Never include in queries by default
+        },
+        isSet: {
+            type: Boolean,
+            default: false
+        },
+        attempts: {
+            type: Number,
+            default: 0
+        },
+        lockedUntil: {
+            type: Date
+        }
+    }
 }, { timestamps: true });
 
 // Encrypt password using bcrypt
@@ -55,6 +72,14 @@ userSchema.pre('save', async function () {
 // Match user entered password to hashed password in database
 userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Match user entered MPIN to hashed MPIN in database
+userSchema.methods.matchMpin = async function (enteredMpin) {
+    if (!this.mpin || !this.mpin.hash) {
+        return false;
+    }
+    return await bcrypt.compare(enteredMpin, this.mpin.hash);
 };
 
 // Virtual populate for KYC

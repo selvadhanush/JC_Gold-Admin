@@ -51,6 +51,7 @@ app.use('/api/v1/buyer/schemes', require('./routes/buyer/scheme.routes'));
 app.use('/api/v1/buyer/notifications', require('./routes/buyer/notification.routes'));
 app.use('/api/v1/buyer/digital-gold', require('./routes/buyer/digitalGold.routes'));
 app.use('/api/v1/buyer/kyc', require('./routes/buyer/kyc.routes'));
+app.use('/api/v1/buyer/mpin', require('./routes/buyer/mpin.routes'));
 
 // Admin Digital Gold routes
 console.log('--- ATTEMPTING TO MOUNT ADMIN DIGITAL GOLD ROUTES ---');

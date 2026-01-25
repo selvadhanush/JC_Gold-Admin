@@ -83,8 +83,11 @@ exports.login = async (req, res, next) => {
             });
         }
 
-        // Generate token
+        // Generate token (basic JWT without mpinVerified flag)
         const token = generateBuyerToken(user._id);
+        
+        // Check MPIN status
+        const mpinSet = user.mpin?.isSet || false;
 
         res.status(200).json({
             success: true,
@@ -97,6 +100,8 @@ exports.login = async (req, res, next) => {
                     phoneNumber: user.phoneNumber,
                 },
                 token,
+                mpinRequired: !mpinSet,  // Frontend knows to show set/verify screen
+                mpinSet: mpinSet
             },
         });
     } catch (error) {

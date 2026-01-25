@@ -55,6 +55,18 @@ const digitalGoldTransactionSchema = new mongoose.Schema({
     notes: {
         type: String,
     },
+    // LOT-BASED: Track which lots were created (for BUY) or used (for REDEEM)
+    lotsCreated: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'GoldLot'
+    }],
+    lotsUsed: [{
+        lot: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'GoldLot'
+        },
+        gramsUsed: Number
+    }]
 }, { timestamps: true });
 
 // Generate transaction ID before save

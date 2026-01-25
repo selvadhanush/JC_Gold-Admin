@@ -1,22 +1,33 @@
 const express = require('express');
 const {
     buyDigitalGold,
-    getWalletBalance,
     requestRedemption,
+    getWalletBalance,
     getTransactions
 } = require('../../controllers/buyer/digitalGold.controller');
+const {
+    getLots,
+    getLotById,
+    getRedemptionLots
+} = require('../../controllers/buyer/goldLot.controller');
 const { protectBuyer } = require('../../middlewares/buyerAuth.middleware');
+const { requireMpinVerified } = require('../../middlewares/requireMpinVerified.middleware');
 const { requireKycApproval } = require('../../middlewares/requireKyc.middleware');
-const validate = require('../../middlewares/validate.middleware');
-const { buyGoldValidation, redeemGoldValidation } = require('../../validations/digitalGold.validation');
 
 const router = express.Router();
 
+// All routes require buyer authentication and MPIN verification
 router.use(protectBuyer);
+router.use(requireMpinVerified);
 
-router.post('/buy', validate(buyGoldValidation), buyDigitalGold);
+router.post('/buy', buyDigitalGold);
+router.post('/redeem', requireKycApproval, requestRedemption);
 router.get('/wallet', getWalletBalance);
-router.post('/redeem', requireKycApproval, validate(redeemGoldValidation), requestRedemption);
 router.get('/transactions', getTransactions);
+
+// LOT-BASED endpoints
+router.get('/lots', getLots);
+router.get('/lots/:id', getLotById);
+router.get('/redemptions/:id/lots', getRedemptionLots);
 
 module.exports = router;

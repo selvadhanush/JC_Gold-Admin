@@ -1,9 +1,11 @@
 const User = require('../../models/User');
 const DigitalGoldTransaction = require('../../models/DigitalGoldTransaction');
 const RedemptionRequest = require('../../models/RedemptionRequest');
+const RedemptionLot = require('../../models/RedemptionLot');
 const ErrorResponse = require('../../utils/errorResponse');
 const { getCurrentGoldRate, convertToGrams } = require('../../utils/goldConversion');
 const { notifyAdmins } = require('../../utils/notification');
+const { redeemGoldFIFO, calculatePortfolioSummary } = require('../../utils/goldLotHelper');
 const mongoose = require('mongoose');
 
 // @desc    Buy digital gold
@@ -44,17 +46,21 @@ exports.buyDigitalGold = async (req, res, next) => {
     }
 };
 
-// @desc    Get gold wallet balance
+// @desc    Get gold wallet balance (LOT-BASED)
 // @route   GET /api/v1/buyer/digital-gold/wallet
 // @access  Private (Buyer)
 exports.getWalletBalance = async (req, res, next) => {
     try {
-        const user = await User.findById(req.buyer._id);
+        const currentRate = await getCurrentGoldRate();
+        
+        // Calculate portfolio from lots
+        const portfolio = await calculatePortfolioSummary(req.buyer._id, currentRate);
         
         res.status(200).json({
             success: true,
             data: {
-                wallet: user.wallet || { goldBalance: 0, silverBalance: 0, cashBalance: 0 }
+                ...portfolio,
+                currentGoldRate: currentRate
             }
         });
     } catch (err) {
@@ -62,7 +68,7 @@ exports.getWalletBalance = async (req, res, next) => {
     }
 };
 
-// @desc    Request redemption
+// @desc    Request redemption (LOT-BASED with FIFO)
 // @route   POST /api/v1/buyer/digital-gold/redeem
 // @access  Private (Buyer)
 exports.requestRedemption = async (req, res, next) => {
@@ -71,41 +77,50 @@ exports.requestRedemption = async (req, res, next) => {
 
     try {
         const { redeemType, goldGrams, productId, deliveryAddress } = req.body;
-        const user = await User.findById(req.buyer._id).session(session);
-
-        if (user.wallet.goldBalance < goldGrams) {
-            return next(new ErrorResponse('Insufficient gold balance', 400));
-        }
-
-        const rate = await getCurrentGoldRate();
-        const equivalentAmount = goldGrams * rate;
-
-        // Note: For Accessories, we might need more logic to check if goldGrams covers the product
         
+        const currentRate = await getCurrentGoldRate();
+        const equivalentAmount = goldGrams * currentRate;
+
+        // LOT-BASED: Use FIFO redemption
+        const { lotsUsed, redemptionLots, totalProfit } = await redeemGoldFIFO(
+            req.buyer._id,
+            goldGrams,
+            currentRate
+        );
+
+        // Create transaction with lots used
         const transaction = await DigitalGoldTransaction.create([{
             user: req.buyer._id,
             type: `REDEEM_${redeemType}`,
-            goldRateAtTime: rate,
+            goldRateAtTime: currentRate,
             goldGrams: goldGrams,
+            lotsUsed: lotsUsed,
             status: 'PENDING'
         }], { session });
 
+        // Create redemption request
         const redemption = await RedemptionRequest.create([{
             user: req.buyer._id,
             transaction: transaction[0]._id,
             redeemType,
             goldGrams,
             equivalentAmount,
-            goldRateAtRedemption: rate,
+            goldRateAtRedemption: currentRate,
             deliveryAddress,
             productId,
             status: 'REQUESTED'
         }], { session });
 
-        // Lock the gold balance? 
-        // For now we don't deduct until approval, but we should verify at approval time again.
-        // Or we could deduct now and refund if rejected. 
-        // Best practice: Deduct now to prevent double spending.
+        // Create redemption lot records
+        for (const rl of redemptionLots) {
+            await RedemptionLot.create([{
+                redemptionRequest: redemption[0]._id,
+                ...rl
+            }], { session });
+        }
+
+        // Update user wallet (for backward compatibility)
+        const user = await User.findById(req.buyer._id).session(session);
         user.wallet.goldBalance -= goldGrams;
         await user.save({ session });
 
@@ -122,7 +137,11 @@ exports.requestRedemption = async (req, res, next) => {
         res.status(201).json({
             success: true,
             message: 'Redemption request submitted.',
-            data: redemption[0]
+            data: {
+                redemption: redemption[0],
+                lotsUsed: lotsUsed.length,
+                totalProfit: totalProfit
+            }
         });
     } catch (err) {
         await session.abortTransaction();
@@ -137,6 +156,8 @@ exports.requestRedemption = async (req, res, next) => {
 exports.getTransactions = async (req, res, next) => {
     try {
         const transactions = await DigitalGoldTransaction.find({ user: req.buyer._id })
+            .populate('lotsCreated')
+            .populate('lotsUsed.lot')
             .sort('-createdAt');
 
         res.status(200).json({
