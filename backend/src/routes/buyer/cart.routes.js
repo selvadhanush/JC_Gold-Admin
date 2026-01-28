@@ -12,8 +12,8 @@ router.use(requireMpinVerified);
 
 router.post('/', validate(addToCartSchema), addToCart);
 router.get('/', getCart);
-router.put('/:id', validate(updateCartItemSchema), updateCartItem);
-router.delete('/:id', removeFromCart);
+router.put('/:itemId', validate(updateCartItemSchema), updateCartItem);
+router.delete('/:itemId', removeFromCart);
 router.delete('/', clearCart);
 
 module.exports = router;

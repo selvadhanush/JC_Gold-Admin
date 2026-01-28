@@ -113,7 +113,11 @@ exports.requestRedemption = async (req, res, next) => {
         const { redeemType, goldGrams, productId, deliveryAddress, bankDetails } = req.body;
         const user = await User.findById(req.buyer._id).session(session);
 
-        if (user.wallet.goldBalance < goldGrams) {
+        // Fix floating-point precision issues
+        const currentBalance = Number(user.wallet.goldBalance.toFixed(6));
+        const requestedGrams = Number(goldGrams.toFixed(6));
+
+        if (currentBalance < requestedGrams) {
             return next(new ErrorResponse('Insufficient gold balance', 400));
         }
 
@@ -159,7 +163,8 @@ exports.requestRedemption = async (req, res, next) => {
         // For now we don't deduct until approval, but we should verify at approval time again.
         // Or we could deduct now and refund if rejected. 
         // Best practice: Deduct now to prevent double spending.
-        user.wallet.goldBalance -= goldGrams;
+        // Deduct balance with precision
+        user.wallet.goldBalance = Number((user.wallet.goldBalance - goldGrams).toFixed(6));
         await user.save({ session });
 
         await session.commitTransaction();

@@ -18,7 +18,8 @@ export default function AdminDigitalGold() {
 
     // Rejection Modal State
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
-    const [selectedRedemptionId, setSelectedRedemptionId] = useState<string | null>(null);
+    const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    const [rejectionType, setRejectionType] = useState<'PURCHASE' | 'REDEMPTION' | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
 
     const fetchData = useCallback(async () => {
@@ -90,19 +91,30 @@ export default function AdminDigitalGold() {
         }
     };
 
-    const handleApprovePurchase = async (id: string, status: 'APPROVED' | 'REJECTED') => {
+    const handleApprovePurchase = async (id: string, status: 'APPROVED' | 'REJECTED', reason?: string) => {
         try {
             const headers = await getAuthHeaders();
+            const body: any = { status };
+            if (status === 'REJECTED' && reason) {
+                body.rejectionReason = reason;
+            }
+
             const response = await fetch(API_ENDPOINTS.ADMIN_DIGITAL_GOLD_APPROVE(id), {
                 method: 'PUT',
                 headers,
-                body: JSON.stringify({ status })
+                body: JSON.stringify(body)
             });
 
             const data = await response.json();
             if (data.success) {
                 Alert.alert('Success', `Transaction ${status.toLowerCase()}`);
                 fetchData();
+                if (status === 'REJECTED') {
+                    setRejectModalVisible(false);
+                    setRejectionReason('');
+                    setSelectedItemId(null);
+                    setRejectionType(null);
+                }
             }
         } catch (error) {
             Alert.alert('Error', 'Failed to process');
@@ -129,7 +141,8 @@ export default function AdminDigitalGold() {
                 fetchData();
                 setRejectModalVisible(false);
                 setRejectionReason('');
-                setSelectedRedemptionId(null);
+                setSelectedItemId(null);
+                setRejectionType(null);
             } else {
                 Alert.alert('Error', data.message || 'Failed to process');
             }
@@ -138,19 +151,27 @@ export default function AdminDigitalGold() {
         }
     };
 
-    const initiateRejection = (id: string) => {
-        setSelectedRedemptionId(id);
+    const initiateRejection = (id: string, type: 'PURCHASE' | 'REDEMPTION') => {
+        console.log('--- INITIATING REJECTION ---', id, type);
+        Alert.alert('Rejection Process', `Opening rejection window for ${type.toLowerCase()}...`);
+        setSelectedItemId(id);
+        setRejectionType(type);
         setRejectionReason('');
         setRejectModalVisible(true);
     };
 
     const confirmRejection = () => {
-        if (!selectedRedemptionId) return;
+        if (!selectedItemId) return;
         if (!rejectionReason.trim()) {
             Alert.alert('Error', 'Please provide a rejection reason');
             return;
         }
-        handleApproveRedemption(selectedRedemptionId, 'REJECTED', rejectionReason);
+
+        if (rejectionType === 'PURCHASE') {
+            handleApprovePurchase(selectedItemId, 'REJECTED', rejectionReason);
+        } else {
+            handleApproveRedemption(selectedItemId, 'REJECTED', rejectionReason);
+        }
     };
 
     return (
@@ -244,10 +265,10 @@ export default function AdminDigitalGold() {
                                             <Text className="text-white font-black text-[10px] uppercase">Approve</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
-                                            onPress={() => handleApprovePurchase(item._id, 'REJECTED')}
-                                            className="flex-1 bg-red-100 py-3 rounded-xl items-center"
+                                            onPress={() => initiateRejection(item._id, 'PURCHASE')}
+                                            className="flex-1 bg-red-600 py-3 rounded-xl items-center shadow-sm"
                                         >
-                                            <Text className="text-red-600 font-black text-[10px] uppercase">Reject</Text>
+                                            <Text className="text-white font-black text-[10px] uppercase">Reject</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -289,10 +310,10 @@ export default function AdminDigitalGold() {
                                             <Text className="text-white font-black text-[10px] uppercase">Approve</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
-                                            onPress={() => initiateRejection(item._id)}
-                                            className="flex-1 bg-red-100 py-3 rounded-xl items-center"
+                                            onPress={() => initiateRejection(item._id, 'REDEMPTION')}
+                                            className="flex-1 bg-red-600 py-3 rounded-xl items-center shadow-sm"
                                         >
-                                            <Text className="text-red-600 font-black text-[10px] uppercase">Reject</Text>
+                                            <Text className="text-white font-black text-[10px] uppercase">Reject</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -302,17 +323,24 @@ export default function AdminDigitalGold() {
                 )}
             </ScrollView>
 
-            {/* Rejection Reason Modal (Custom Overlay) */}
-            {rejectModalVisible && (
-                <View className="absolute inset-0 z-50 justify-center items-center bg-black/50">
-                    <View className="bg-white w-[90%] p-6 rounded-3xl shadow-lg">
-                        <Text className="text-lg font-black text-gray-900 mb-4">Reject Redemption Request</Text>
-                        <Text className="text-gray-500 text-xs mb-2">Please provide a reason for rejection:</Text>
+            {/* Rejection Reason Modal */}
+            <Modal
+                transparent
+                visible={rejectModalVisible}
+                animationType="fade"
+                onRequestClose={() => setRejectModalVisible(false)}
+            >
+                <View className="flex-1 justify-center items-center bg-black/50 px-6">
+                    <View className="bg-white w-full p-6 rounded-3xl shadow-lg">
+                        <Text className="text-xl font-black text-gray-900 mb-2">
+                            Reject {rejectionType === 'PURCHASE' ? 'Gold Purchase' : 'Redemption Request'}
+                        </Text>
+                        <Text className="text-gray-500 text-xs mb-4">Please provide a reason for rejection:</Text>
 
                         <TextInput
-                            className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-900 mb-4 h-24 text-top"
+                            className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-gray-900 mb-6 h-32 text-top"
                             multiline
-                            placeholder="Type reason here..."
+                            placeholder="e.g., Payment verification failed, Invalid transaction ID..."
                             value={rejectionReason}
                             onChangeText={setRejectionReason}
                             textAlignVertical="top"
@@ -321,20 +349,20 @@ export default function AdminDigitalGold() {
                         <View className="flex-row gap-x-3">
                             <TouchableOpacity
                                 onPress={() => setRejectModalVisible(false)}
-                                className="flex-1 bg-gray-100 py-3 rounded-xl items-center"
+                                className="flex-1 bg-gray-100 py-4 rounded-xl items-center"
                             >
                                 <Text className="text-gray-600 font-bold">Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={confirmRejection}
-                                className="flex-1 bg-red-600 py-3 rounded-xl items-center"
+                                className="flex-1 bg-red-600 py-4 rounded-xl items-center shadow-sm"
                             >
-                                <Text className="text-white font-bold">Reject</Text>
+                                <Text className="text-white font-bold">Confirm Reject</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 </View>
-            )}
+            </Modal>
         </SafeAreaView>
     );
 }

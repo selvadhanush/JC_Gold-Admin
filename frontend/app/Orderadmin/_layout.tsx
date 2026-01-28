@@ -12,7 +12,7 @@ export default function OrderAdminLayout() {
                     'pending': 'pending',
                     'manage': 'manage',
                     'shipped': 'shipped',
-                    'digital_gold': 'gold',
+                    'physical_gold_delivery': 'gold',
                     'hub': 'hub'
                 };
                 return <OrderAdminNav activeTab={tabMap[routeName] || 'dashboard'} />;
@@ -81,9 +81,9 @@ export default function OrderAdminLayout() {
                 }}
             />
             <Tabs.Screen
-                name="digital_gold"
+                name="physical_gold_delivery"
                 options={{
-                    title: 'Gold Delivery'
+                    title: 'Physical Gold Deliveries'
                 }}
             />
         </Tabs>

@@ -1,0 +1,76 @@
+# Digital Gold: How It Works 💰📈
+
+This document explains the technical and financial logic behind the Digital Gold system in the **JC Gold & Jewels** platform.
+
+---
+
+## 1. Core Concepts
+
+### A. The "Lot-Based" System
+Unlike a simple balance, our system uses **Gold Lots**. Every time you buy gold, a new "Lot" is created. 
+- **Lot 1**: 0.5g bought at ₹6,000/g
+- **Lot 2**: 0.2g bought at ₹7,000/g
+
+These lots are tracked individually so we never lose track of exactly how much money you spent (**Cost Basis**).
+
+### B. Key Metrics
+| Metric | Explanation | Formula |
+| :--- | :--- | :--- |
+| **Invested** | The actual cash (Rupees) you paid from your bank account. | `Sum of (Rupees Spent)` |
+| **Current Value** | What your gold is worth today if you sold it. | `Total Grams × Live Gold Rate` |
+| **Avg. Buy Price** | The average rate at which you entered the market. | `Total Invested ÷ Total Grams` |
+| **Profit / Loss** | Your net gain or loss in real-time. | `Current Value - Total Invested` |
+
+---
+
+## 2. Step-by-Step Example
+
+### Scenario 1: Initial Purchase
+You invest **₹1,000** when the Gold Rate is **₹5,000/g**.
+- **Gold Received**: 0.200g
+- **Invested**: ₹1,000
+- **Current Value**: ₹1,000
+- **Avg. Buy Price**: ₹5,000/g
+- **Performance**: 0%
+
+### Scenario 2: Price Increase
+The Gold Rate jumps to **₹6,000/g**.
+- **Gold Balance**: 0.200g (Unchanged)
+- **Invested**: ₹1,000 (Your original cash)
+- **Current Value**: 0.200g × ₹6,000 = **₹1,200**
+- **Avg. Buy Price**: ₹5,000/g
+- **Performance**: **+₹200 (+20%)** 📈
+
+### Scenario 3: Averaging (Second Purchase)
+You invest another **₹2,000** when the rate is **₹8,000/g**.
+- **New Gold**: 0.250g
+- **Total Gold**: 0.200g + 0.250g = **0.450g**
+- **Total Invested**: ₹1,000 + ₹2,000 = **₹3,000**
+- **New Avg. Price**: ₹3,000 ÷ 0.450g = **₹6,666/g**
+- **Current Value**: 0.450g × ₹8,000 = **₹3,600**
+- **Performance**: **+₹600 (+20%)**
+
+---
+
+## 3. Advanced Logic: FIFO (First-In, First-Out)
+
+When you **Redeem** your gold (for Cash or Physical Gold), the system uses **FIFO** logic. This means it sells your **oldest gold first**.
+
+### Why is this important?
+- It ensures you realize profits from your oldest investments first.
+- It keeps your portfolio "fresh" by keeping the most recent purchase prices in your active vault.
+
+---
+
+## 4. The Administrative Flow
+
+1.  **Payment**: You pay via Razorpay.
+2.  **Pending**: The transaction enters the "Pending" state.
+3.  **Approval**: An Admin verifies the payment and "Approves" the grams.
+4.  **Wallet Credit**: Only after approval do the grams appear in your vault and the price is locked in from the time of purchase.
+
+---
+
+> [!TIP]
+> **Check your Dashboard!**
+> The `@ ₹XX,XXX/g` label shows your entry price. If the main display rate is higher than this number, you are in profit!

@@ -221,7 +221,7 @@ export default function Orders() {
 
                     renderItem={renderOrderCard}
                     keyExtractor={(item) => item._id}
-                    contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
+                    contentContainerStyle={{ padding: 24, paddingBottom: 140 }}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={() => fetchOrders()} colors={['#f97316']} />

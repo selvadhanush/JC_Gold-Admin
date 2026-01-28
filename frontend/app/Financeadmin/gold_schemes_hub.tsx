@@ -9,10 +9,11 @@ import {
     Dimensions,
     Alert,
     StatusBar,
+    Modal,
+    TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { TextInput } from 'react-native'; // Added TextInput
 import { getAuthHeaders, BASE_URL, API_ENDPOINTS } from '../../api';
 import Toast from 'react-native-toast-message';
 
@@ -56,7 +57,8 @@ export default function GoldSchemesHub() {
 
     // Rejection Modal State
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
-    const [selectedRedemptionId, setSelectedRedemptionId] = useState<string | null>(null);
+    const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    const [rejectionType, setRejectionType] = useState<'PURCHASE' | 'REDEMPTION' | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
 
     const fetchData = useCallback(async () => {
@@ -96,18 +98,29 @@ export default function GoldSchemesHub() {
         fetchData();
     }, [fetchData]);
 
-    const handleApproveGold = async (id: string, status: 'APPROVED' | 'REJECTED') => {
+    const handleApproveGold = async (id: string, status: 'APPROVED' | 'REJECTED', reason?: string) => {
         try {
             const headers = await getAuthHeaders();
+            const body: any = { status };
+            if (status === 'REJECTED' && reason) {
+                body.rejectionReason = reason;
+            }
+
             const response = await fetch(API_ENDPOINTS.ADMIN_DIGITAL_GOLD_APPROVE(id), {
                 method: 'PUT',
                 headers,
-                body: JSON.stringify({ status })
+                body: JSON.stringify(body)
             });
             const data = await response.json();
             if (data.success) {
                 Toast.show({ type: 'success', text1: `Gold Purchase ${status}` });
                 fetchData();
+                if (status === 'REJECTED') {
+                    setRejectModalVisible(false);
+                    setRejectionReason('');
+                    setSelectedItemId(null);
+                    setRejectionType(null);
+                }
             }
         } catch (error) {
             Toast.show({ type: 'error', text1: 'Action Failed' });
@@ -134,7 +147,8 @@ export default function GoldSchemesHub() {
                 fetchData();
                 setRejectModalVisible(false);
                 setRejectionReason('');
-                setSelectedRedemptionId(null);
+                setSelectedItemId(null);
+                setRejectionType(null);
             } else {
                 Toast.show({ type: 'error', text1: data.message || 'Action Failed' });
             }
@@ -143,19 +157,25 @@ export default function GoldSchemesHub() {
         }
     };
 
-    const initiateRejection = (id: string) => {
-        setSelectedRedemptionId(id);
+    const initiateRejection = (id: string, type: 'PURCHASE' | 'REDEMPTION') => {
+        setSelectedItemId(id);
+        setRejectionType(type);
         setRejectionReason('');
         setRejectModalVisible(true);
     };
 
     const confirmRejection = () => {
-        if (!selectedRedemptionId) return;
+        if (!selectedItemId) return;
         if (!rejectionReason.trim()) {
             Toast.show({ type: 'error', text1: 'Please provide a rejection reason' });
             return;
         }
-        handleApproveRedemption(selectedRedemptionId, 'REJECTED', rejectionReason);
+
+        if (rejectionType === 'PURCHASE') {
+            handleApproveGold(selectedItemId, 'REJECTED', rejectionReason);
+        } else {
+            handleApproveRedemption(selectedItemId, 'REJECTED', rejectionReason);
+        }
     };
 
     const handleRecordInstallment = async (id: string) => {
@@ -356,10 +376,10 @@ export default function GoldSchemesHub() {
                                             <Text className="text-white font-black text-[10px] uppercase ml-2 tracking-widest">Approve</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
-                                            onPress={() => handleApproveGold(item._id, 'REJECTED')}
-                                            className="w-14 bg-red-50 border border-red-100 rounded-2xl items-center justify-center"
+                                            onPress={() => initiateRejection(item._id, 'PURCHASE')}
+                                            className="w-14 bg-red-600 rounded-2xl items-center justify-center shadow-sm"
                                         >
-                                            <Ionicons name="close" size={20} color="#ef4444" />
+                                            <Ionicons name="close" size={20} color="white" />
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -492,10 +512,10 @@ export default function GoldSchemesHub() {
                                                 <Text className="text-white font-black text-[10px] uppercase">Approve</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity
-                                                onPress={() => initiateRejection(item._id)}
-                                                className="w-12 bg-red-50 border border-red-100 rounded-xl items-center justify-center"
+                                                onPress={() => initiateRejection(item._id, 'REDEMPTION')}
+                                                className="w-12 bg-red-600 rounded-xl items-center justify-center"
                                             >
-                                                <Ionicons name="close" size={18} color="#ef4444" />
+                                                <Ionicons name="close" size={18} color="white" />
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -554,15 +574,22 @@ export default function GoldSchemesHub() {
 
             <Toast />
 
-            {/* Rejection Reason Modal (Custom Overlay) */}
-            {rejectModalVisible && (
-                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <View className="bg-white w-[90%] p-6 rounded-3xl shadow-lg">
-                        <Text className="text-lg font-black text-gray-900 mb-4">Reject Redemption Request</Text>
-                        <Text className="text-gray-500 text-xs mb-2">Please provide a reason for rejection:</Text>
+            {/* Rejection Reason Modal */}
+            <Modal
+                transparent
+                visible={rejectModalVisible}
+                animationType="fade"
+                onRequestClose={() => setRejectModalVisible(false)}
+            >
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 24 }}>
+                    <View className="bg-white w-full p-6 rounded-3xl shadow-lg">
+                        <Text className="text-xl font-black text-gray-900 mb-2">
+                            Reject {rejectionType === 'PURCHASE' ? 'Gold Purchase' : 'Redemption Request'}
+                        </Text>
+                        <Text className="text-gray-500 text-xs mb-4">Please provide a reason for rejection:</Text>
 
                         <TextInput
-                            className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-900 mb-4 h-24 text-top"
+                            className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-gray-900 mb-6 h-32 text-top"
                             multiline
                             placeholder="Type reason here..."
                             value={rejectionReason}
@@ -573,20 +600,20 @@ export default function GoldSchemesHub() {
                         <View className="flex-row gap-x-3">
                             <TouchableOpacity
                                 onPress={() => setRejectModalVisible(false)}
-                                className="flex-1 bg-gray-100 py-3 rounded-xl items-center"
+                                className="flex-1 bg-gray-100 py-4 rounded-xl items-center"
                             >
                                 <Text className="text-gray-600 font-bold">Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={confirmRejection}
-                                className="flex-1 bg-red-600 py-3 rounded-xl items-center"
+                                className="flex-1 bg-red-600 py-4 rounded-xl items-center"
                             >
-                                <Text className="text-white font-bold">Reject</Text>
+                                <Text className="text-white font-bold">Confirm Reject</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 </View>
-            )}
+            </Modal>
         </SafeAreaView >
     );
 

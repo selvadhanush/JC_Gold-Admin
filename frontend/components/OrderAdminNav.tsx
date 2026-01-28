@@ -15,7 +15,7 @@ export default function OrderAdminNav({ activeTab }: OrderAdminNavProps) {
         { id: 'dashboard', label: 'Home', icon: 'home-outline', activeIcon: 'home', route: '/Orderadmin' },
         { id: 'orders', label: 'Orders', icon: 'receipt-outline', activeIcon: 'receipt', route: '/Orderadmin/orders' },
         { id: 'pending', label: 'Pending', icon: 'time-outline', activeIcon: 'time', route: '/Orderadmin/pending' },
-        { id: 'gold', label: 'Gold', icon: 'diamond-outline', activeIcon: 'diamond', route: '/Orderadmin/digital_gold' },
+        { id: 'gold', label: 'Gold', icon: 'diamond-outline', activeIcon: 'diamond', route: '/Orderadmin/physical_gold_delivery' },
         { id: 'manage', label: 'Manage', icon: 'settings-outline', activeIcon: 'settings', route: '/Orderadmin/manage' },
         { id: 'shipped', label: 'Shipped', icon: 'airplane-outline', activeIcon: 'airplane', route: '/Orderadmin/shipped' },
     ];

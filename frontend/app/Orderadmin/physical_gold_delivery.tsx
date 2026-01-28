@@ -26,7 +26,7 @@ const tabs: Tab[] = [
     { key: 'COMPLETED', label: 'Completed', status: 'COMPLETED', icon: 'checkmark-done', color: '#10b981' },
 ];
 
-export default function OrderDigitalGold() {
+export default function PhysicalGoldDelivery() {
     const router = useRouter();
     const scrollViewRef = useRef<ScrollView>(null);
     const [activeTab, setActiveTab] = useState<TabKey>('ALL');
@@ -41,18 +41,21 @@ export default function OrderDigitalGold() {
         contactNumber: '',
         instructions: ''
     });
+    const [rejectModalVisible, setRejectModalVisible] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         try {
             const headers = await getAuthHeaders();
-            // Fetch all redemptions (both CASH and PHYSICAL_GOLD)
-            const response = await fetch(`${BASE_URL}/api/v1/admin/digital-gold/redemptions`, { headers });
+            // Fetch only PHYSICAL_GOLD redemptions
+            const response = await fetch(`${BASE_URL}/api/v1/admin/digital-gold/redemptions?redeemType=PHYSICAL_GOLD`, { headers });
             const data = await response.json();
             if (data.success) {
                 setAllRedemptions(data.data);
             }
         } catch (error) {
-            console.error('Error fetching order gold data:', error);
+            console.error('Error fetching physical gold data:', error);
             showToast.error('Failed to load redemptions');
         } finally {
             setLoading(false);
@@ -79,18 +82,26 @@ export default function OrderDigitalGold() {
         scrollViewRef.current?.scrollTo({ x: index * width, animated: true });
     };
 
-    const handleApprove = async (id: string, status: 'APPROVED' | 'REJECTED') => {
+    const handleApprove = async (id: string, status: 'APPROVED' | 'REJECTED', reason?: string) => {
         try {
             const headers = await getAuthHeaders();
+            const body: any = { status };
+            if (status === 'REJECTED' && reason) {
+                body.rejectionReason = reason;
+            }
+
             const response = await fetch(API_ENDPOINTS.ADMIN_DIGITAL_GOLD_REDEMPTION_APPROVE(id), {
                 method: 'PUT',
                 headers,
-                body: JSON.stringify({ status })
+                body: JSON.stringify(body)
             });
 
             const data = await response.json();
             if (data.success) {
                 showToast.success(`Redemption ${status.toLowerCase()}`);
+                if (status === 'REJECTED') {
+                    setRejectModalVisible(false);
+                }
                 fetchData();
             } else {
                 showToast.error(data.message || 'Failed to process');
@@ -98,6 +109,21 @@ export default function OrderDigitalGold() {
         } catch (error) {
             showToast.error('Failed to process redemption');
         }
+    };
+
+    const initiateRejection = (id: string) => {
+        setSelectedItemId(id);
+        setRejectionReason('');
+        setRejectModalVisible(true);
+    };
+
+    const confirmRejection = () => {
+        if (!selectedItemId) return;
+        if (!rejectionReason.trim()) {
+            showToast.error('Please provide a rejection reason');
+            return;
+        }
+        handleApprove(selectedItemId, 'REJECTED', rejectionReason);
     };
 
     const handleMarkReadyForPickup = async () => {
@@ -160,39 +186,6 @@ export default function OrderDigitalGold() {
         );
     };
 
-    const handleMarkAsPaid = async (id: string) => {
-        Alert.alert(
-            'Confirm Payment',
-            'Has the cash payment been transferred to the customer?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Confirm',
-                    onPress: async () => {
-                        try {
-                            const headers = await getAuthHeaders();
-                            const response = await fetch(API_ENDPOINTS.ADMIN_DIGITAL_GOLD_REDEMPTION_APPROVE(id), {
-                                method: 'PUT',
-                                headers,
-                                body: JSON.stringify({ status: 'COMPLETED' })
-                            });
-
-                            const data = await response.json();
-                            if (data.success) {
-                                showToast.success('Marked as paid and completed');
-                                fetchData();
-                            } else {
-                                showToast.error(data.message || 'Failed to update');
-                            }
-                        } catch (error) {
-                            showToast.error('Failed to mark as paid');
-                        }
-                    }
-                }
-            ]
-        );
-    };
-
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'REQUESTED': return { bg: '#fff7ed', text: '#ea580c', dot: '#f97316' };
@@ -238,25 +231,6 @@ export default function OrderDigitalGold() {
                         <Text className="text-gray-500 text-xs font-bold mt-0.5">{item.user?.phoneNumber}</Text>
                     </View>
                     <View>
-                        {/* Redemption Type Badge */}
-                        <View
-                            className="px-3 py-1.5 rounded-full mb-2"
-                            style={{ backgroundColor: item.redeemType === 'PHYSICAL_GOLD' ? '#fef3c7' : '#dbeafe' }}
-                        >
-                            <View className="flex-row items-center">
-                                <Ionicons
-                                    name={item.redeemType === 'PHYSICAL_GOLD' ? 'cube' : 'cash'}
-                                    size={12}
-                                    color={item.redeemType === 'PHYSICAL_GOLD' ? '#f59e0b' : '#3b82f6'}
-                                />
-                                <Text
-                                    className="text-[9px] font-black uppercase tracking-wider ml-1"
-                                    style={{ color: item.redeemType === 'PHYSICAL_GOLD' ? '#f59e0b' : '#3b82f6' }}
-                                >
-                                    {item.redeemType === 'PHYSICAL_GOLD' ? 'Physical' : 'Cash'}
-                                </Text>
-                            </View>
-                        </View>
                         {/* Status Badge */}
                         <View
                             className="px-3 py-2 rounded-full flex-row items-center"
@@ -292,8 +266,8 @@ export default function OrderDigitalGold() {
                     </View>
                 </View>
 
-                {/* Address Details - Only for Physical Gold */}
-                {item.redeemType === 'PHYSICAL_GOLD' && item.deliveryAddress && (
+                {/* Address Details */}
+                {item.deliveryAddress && (
                     <View className="bg-gray-50 rounded-2xl p-4 mb-4">
                         <View className="flex-row items-center mb-2">
                             <Ionicons name="location" size={14} color="#6b7280" />
@@ -304,36 +278,6 @@ export default function OrderDigitalGold() {
                         {item.deliveryAddress.phoneNumber && (
                             <Text className="text-blue-600 font-bold text-xs mt-1">📞 {item.deliveryAddress.phoneNumber}</Text>
                         )}
-                    </View>
-                )}
-
-                {/* Bank Details - Only for Cash Redemptions */}
-                {item.redeemType === 'CASH' && item.bankDetails && (
-                    <View className="bg-blue-50 rounded-2xl p-4 mb-4 border border-blue-100">
-                        <View className="flex-row items-center mb-3">
-                            <Ionicons name="card" size={14} color="#3b82f6" />
-                            <Text className="text-blue-600 text-[9px] font-black uppercase tracking-widest ml-1">Bank Details</Text>
-                        </View>
-                        <View className="space-y-2">
-                            <View>
-                                <Text className="text-gray-400 text-[9px] font-black uppercase tracking-widest">Account Holder</Text>
-                                <Text className="text-gray-900 font-bold text-sm">{item.bankDetails.accountHolderName}</Text>
-                            </View>
-                            <View className="flex-row gap-x-4 mt-2">
-                                <View className="flex-1">
-                                    <Text className="text-gray-400 text-[9px] font-black uppercase tracking-widest">Account Number</Text>
-                                    <Text className="text-gray-900 font-bold text-sm">****{item.bankDetails.accountNumber?.slice(-4)}</Text>
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-gray-400 text-[9px] font-black uppercase tracking-widest">IFSC Code</Text>
-                                    <Text className="text-gray-900 font-bold text-sm">{item.bankDetails.ifscCode}</Text>
-                                </View>
-                            </View>
-                            <View className="mt-2">
-                                <Text className="text-gray-400 text-[9px] font-black uppercase tracking-widest">Bank Name</Text>
-                                <Text className="text-gray-900 font-bold text-sm">{item.bankDetails.bankName}</Text>
-                            </View>
-                        </View>
                     </View>
                 )}
 
@@ -371,7 +315,7 @@ export default function OrderDigitalGold() {
                             <Text className="text-white font-black uppercase tracking-widest text-xs">Approve</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            onPress={() => handleApprove(item._id, 'REJECTED')}
+                            onPress={() => initiateRejection(item._id)}
                             className="bg-red-50 px-5 rounded-2xl items-center justify-center border border-red-100"
                         >
                             <Ionicons name="close-circle" size={24} color="#dc2626" />
@@ -380,26 +324,15 @@ export default function OrderDigitalGold() {
                 )}
 
                 {item.status === 'APPROVED' && (
-                    <>
-                        {item.redeemType === 'PHYSICAL_GOLD' ? (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setSelectedRedemption(item);
-                                    setShowPickupModal(true);
-                                }}
-                                className="bg-purple-600 py-4 rounded-2xl items-center"
-                            >
-                                <Text className="text-white font-black uppercase tracking-widest text-xs">Mark Ready for Pickup</Text>
-                            </TouchableOpacity>
-                        ) : (
-                            <TouchableOpacity
-                                onPress={() => handleMarkAsPaid(item._id)}
-                                className="bg-green-600 py-4 rounded-2xl items-center"
-                            >
-                                <Text className="text-white font-black uppercase tracking-widest text-xs">Mark as Paid</Text>
-                            </TouchableOpacity>
-                        )}
-                    </>
+                    <TouchableOpacity
+                        onPress={() => {
+                            setSelectedRedemption(item);
+                            setShowPickupModal(true);
+                        }}
+                        className="bg-purple-600 py-4 rounded-2xl items-center"
+                    >
+                        <Text className="text-white font-black uppercase tracking-widest text-xs">Mark Ready for Pickup</Text>
+                    </TouchableOpacity>
                 )}
 
                 {item.status === 'READY_FOR_PICKUP' && (
@@ -416,11 +349,9 @@ export default function OrderDigitalGold() {
                         <View className="flex-row items-center">
                             <Ionicons name="checkmark-circle" size={16} color="#10b981" />
                             <Text className="text-green-700 text-xs font-bold ml-2">
-                                {item.redeemType === 'PHYSICAL_GOLD' && item.collectionDate
+                                {item.collectionDate
                                     ? `Collected on ${formatDate(item.collectionDate)}`
-                                    : item.completionDate
-                                        ? `Payment completed on ${formatDate(item.completionDate)}`
-                                        : 'Completed'}
+                                    : 'Completed'}
                             </Text>
                         </View>
                     </View>
@@ -453,7 +384,7 @@ export default function OrderDigitalGold() {
         <SafeAreaView className="flex-1 bg-white">
             <Stack.Screen options={{
                 headerShown: true,
-                title: 'Gold Redemptions',
+                title: 'Physical Gold Deliveries',
                 headerTitleStyle: { fontWeight: '900' }
             }} />
 
@@ -603,6 +534,57 @@ export default function OrderDigitalGold() {
                                 <Text className="text-white font-black uppercase tracking-widest text-xs">Confirm & Notify Customer</Text>
                             </TouchableOpacity>
                         </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Rejection Modal */}
+            <Modal
+                transparent
+                visible={rejectModalVisible}
+                animationType="fade"
+                onRequestClose={() => setRejectModalVisible(false)}
+            >
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 24 }}>
+                    <View className="bg-white w-full p-6 rounded-[32px] shadow-lg">
+                        <View className="flex-row items-center mb-2">
+                            <View className="w-10 h-10 bg-red-50 rounded-xl items-center justify-center mr-3">
+                                <Ionicons name="close-circle" size={24} color="#dc2626" />
+                            </View>
+                            <Text className="text-xl font-black text-gray-900">
+                                Reject Conversion
+                            </Text>
+                        </View>
+
+                        <Text className="text-gray-500 text-sm font-medium mb-4 ml-1">
+                            Please provide a reason for rejecting this physical gold conversion request.
+                        </Text>
+
+                        <TextInput
+                            className="bg-gray-50 rounded-2xl p-4 text-gray-900 font-bold border border-gray-100 mb-6"
+                            placeholder="Reason for rejection..."
+                            placeholderTextColor="#9ca3af"
+                            multiline
+                            numberOfLines={4}
+                            textAlignVertical="top"
+                            value={rejectionReason}
+                            onChangeText={setRejectionReason}
+                        />
+
+                        <View className="flex-row gap-x-3">
+                            <TouchableOpacity
+                                onPress={() => setRejectModalVisible(false)}
+                                className="flex-1 bg-gray-100 py-4 rounded-2xl items-center"
+                            >
+                                <Text className="text-gray-600 font-black uppercase tracking-widest text-xs">Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={confirmRejection}
+                                className="flex-2 bg-red-600 py-4 px-8 rounded-2xl items-center shadow-lg shadow-red-200"
+                            >
+                                <Text className="text-white font-black uppercase tracking-widest text-xs">Confirm Reject</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>

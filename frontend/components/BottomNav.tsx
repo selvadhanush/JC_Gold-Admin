@@ -3,12 +3,14 @@ import { View, TouchableOpacity, Text, Platform } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface BottomNavProps {
     activeTab?: 'home' | 'explore' | 'orders' | 'cart' | 'profile';
 }
 
 export default function BottomNav({ activeTab }: BottomNavProps) {
+    const insets = useSafeAreaInsets();
     let router: any = null;
     let pathname: any = '';
 
@@ -43,7 +45,14 @@ export default function BottomNav({ activeTab }: BottomNavProps) {
     ) || 'home';
 
     return (
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+        <View style={{
+            position: 'absolute',
+            bottom: insets.bottom + 16,
+            left: 20,
+            right: 20,
+            zIndex: 100,
+            alignItems: 'center',
+        }}>
             <BlurView
                 intensity={90}
                 tint="light"
@@ -51,16 +60,18 @@ export default function BottomNav({ activeTab }: BottomNavProps) {
                     flexDirection: 'row',
                     justifyContent: 'space-around',
                     alignItems: 'center',
-                    borderTopWidth: 2,
-                    borderTopColor: '#f3f4f6',
+                    borderRadius: 32, // Floating pill shape
                     overflow: 'hidden',
-                    backgroundColor: Platform.OS === 'android' ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.95)',
-                    height: 70,
-                    elevation: 12,
+                    backgroundColor: Platform.OS === 'android' ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.85)',
+                    height: 64, // Sleek height
+                    width: '100%',
+                    elevation: 10,
                     shadowColor: '#000',
-                    shadowOffset: { width: 0, height: -4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 16,
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 20,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.6)',
                 }}
             >
                 {tabs.map((tab) => {
@@ -74,54 +85,36 @@ export default function BottomNav({ activeTab }: BottomNavProps) {
                                     router.push(tab.route as any);
                                 }
                             }}
-                            style={{ alignItems: 'center', justifyContent: 'center', flex: 1, paddingVertical: 12 }}
+                            style={{ alignItems: 'center', justifyContent: 'center', flex: 1, height: '100%' }}
                             activeOpacity={0.6}
                         >
-                            <View
-                                style={{ alignItems: 'center', justifyContent: 'center', opacity: isActive ? 1 : 0.5 }}
-                            >
+                            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                                 <View
                                     style={{
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        borderRadius: 16,
-                                        paddingHorizontal: 16,
-                                        paddingVertical: 8,
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 18,
                                         backgroundColor: isActive ? '#fff7ed' : 'transparent',
-                                        minWidth: 56,
+                                        marginBottom: 2
                                     }}
                                 >
                                     <Ionicons
                                         name={(isActive ? tab.activeIcon : tab.icon) as any}
-                                        size={26}
-                                        color={isActive ? '#ea580c' : '#64748b'}
+                                        size={20}
+                                        color={isActive ? '#ea580c' : '#94a3b8'}
                                     />
-                                    <Text
-                                        style={{
-                                            fontSize: 9,
-                                            fontWeight: 'bold',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: 0.5,
-                                            marginTop: 4,
-                                            color: isActive ? '#ea580c' : '#64748b'
-                                        }}
-                                    >
-                                        {tab.label}
-                                    </Text>
                                 </View>
                                 {isActive && (
                                     <View
                                         style={{
-                                            position: 'absolute',
-                                            bottom: -4,
-                                            width: 32,
+                                            width: 4,
                                             height: 4,
-                                            borderRadius: 9999,
+                                            borderRadius: 2,
                                             backgroundColor: '#ea580c',
-                                            shadowColor: '#ea580c',
-                                            shadowOffset: { width: 0, height: 2 },
-                                            shadowOpacity: 0.4,
-                                            shadowRadius: 4,
+                                            position: 'absolute',
+                                            bottom: -6
                                         }}
                                     />
                                 )}

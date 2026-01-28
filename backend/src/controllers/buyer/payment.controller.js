@@ -72,6 +72,17 @@ exports.verifyPayment = async (req, res) => {
             razorpay_signature
         } = req.body;
 
+        // Check if payment with this order ID already exists to prevent duplicates (Idempotency)
+        const existingPayment = await Payment.findOne({ razorpayOrderId: razorpay_order_id });
+        if (existingPayment) {
+            console.log(`[Idempotency] Payment ${razorpay_order_id} already verified.`);
+            return res.status(200).json({
+                success: true,
+                message: 'Payment already verified',
+                data: existingPayment
+            });
+        }
+
         const sign = razorpay_order_id + "|" + razorpay_payment_id;
         const expectedSign = crypto
             .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)

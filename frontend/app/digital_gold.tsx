@@ -25,6 +25,7 @@ export default function DigitalGoldScreen() {
     const [rzpData, setRzpData] = useState<any>(null);
     const [kycStatus, setKycStatus] = useState<string>('NOT_SUBMITTED');
     const [isSimulating, setIsSimulating] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(false);
 
     const initData = useCallback(async () => {
         try {
@@ -120,7 +121,9 @@ export default function DigitalGoldScreen() {
     };
 
     const verifyPayment = async (rzpOrderId: string, rzpPaymentId: string) => {
+        if (isVerifying) return;
         try {
+            setIsVerifying(true);
             setIsProcessing(true);
             const headers = await getAuthHeaders();
 
@@ -149,6 +152,7 @@ export default function DigitalGoldScreen() {
             showToast.error('Something went wrong during verification');
         } finally {
             setIsProcessing(false);
+            setIsVerifying(false);
         }
     };
 
@@ -223,6 +227,7 @@ export default function DigitalGoldScreen() {
                                     <View>
                                         <Text className="text-white/60 text-[10px] uppercase font-bold">Invested</Text>
                                         <Text className="text-white font-bold">₹{(wallet.totalInvested || 0).toLocaleString()}</Text>
+                                        <Text className="text-white/40 text-[8px]">@ ₹{((wallet.totalInvested || 0) / (wallet.goldBalance || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}/g</Text>
                                     </View>
                                 </View>
                                 {wallet.totalProfit !== undefined && (
@@ -241,20 +246,15 @@ export default function DigitalGoldScreen() {
                             </View>
                         </View>
 
-                        <View className="flex-row gap-x-3">
-                            <TouchableOpacity
-                                onPress={() => router.push('/redeem_gold')}
-                                className="flex-1 bg-white/20 py-3 rounded-2xl items-center border border-white/30"
-                            >
-                                <Text className="text-white font-bold text-xs">Redeem</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => router.push('/redemption_status')}
-                                className="flex-1 bg-white py-3 rounded-2xl items-center"
-                            >
-                                <Text className="text-primary-600 font-bold text-xs">History</Text>
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity
+                            onPress={() => router.push('/redeem_physical_gold')}
+                            className="bg-white/20 py-3 rounded-2xl items-center border border-white/30"
+                        >
+                            <View className="flex-row items-center">
+                                <Ionicons name="cube-outline" size={16} color="white" />
+                                <Text className="text-white font-bold text-xs ml-2">Redeem for Physical Gold</Text>
+                            </View>
+                        </TouchableOpacity>
 
                         <View className="absolute -right-12 -bottom-12 w-48 h-48 bg-white/10 rounded-full" />
                     </View>
@@ -340,8 +340,9 @@ export default function DigitalGoldScreen() {
                         ) : (
                             <View>
                                 {transactions.slice(0, 5).map((item, index) => (
-                                    <View
+                                    <TouchableOpacity
                                         key={item._id}
+                                        onPress={() => router.push('/transactions_history')}
                                         className="bg-white rounded-[28px] overflow-hidden border border-gray-100 mb-4"
                                         style={{
                                             shadowColor: '#000',
@@ -350,6 +351,7 @@ export default function DigitalGoldScreen() {
                                             shadowRadius: 8,
                                             elevation: 2
                                         }}
+                                        activeOpacity={0.8}
                                     >
                                         {/* Transaction Header */}
                                         <View className="px-5 pt-5 pb-4 flex-row items-center justify-between">
@@ -462,9 +464,22 @@ export default function DigitalGoldScreen() {
                                                         </View>
                                                     )}
                                                 </View>
+
+                                                {/* Rejection Reason Display */}
+                                                {item.status === 'REJECTED' && item.rejectionReason && (
+                                                    <View className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl">
+                                                        <View className="flex-row items-center mb-1">
+                                                            <Ionicons name="alert-circle" size={12} color="#dc2626" />
+                                                            <Text className="text-red-700 font-black text-[8px] uppercase tracking-widest ml-2">Rejection Reason</Text>
+                                                        </View>
+                                                        <Text className="text-red-600 text-[10px] font-bold">
+                                                            {item.rejectionReason}
+                                                        </Text>
+                                                    </View>
+                                                )}
                                             </View>
                                         </View>
-                                    </View>
+                                    </TouchableOpacity>
                                 ))}
                             </View>
                         )}

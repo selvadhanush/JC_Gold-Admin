@@ -102,10 +102,11 @@ exports.calculatePortfolioSummary = async (userId, currentRate) => {
     const totalGoldGrams = activeLots.reduce((sum, lot) => sum + lot.remainingGrams, 0);
     const currentValue = totalGoldGrams * currentRate;
 
-    // Calculate total invested (only for remaining grams)
-    const totalInvested = activeLots.reduce((sum, lot) =>
-        sum + (lot.remainingGrams * lot.pricePerGram), 0
-    );
+    // Calculate total invested (proportionally for remaining grams)
+    const totalInvested = activeLots.reduce((sum, lot) => {
+        const costBasis = lot.goldGrams > 0 ? (lot.remainingGrams / lot.goldGrams) * lot.totalPaid : 0;
+        return sum + costBasis;
+    }, 0);
 
     const totalProfit = currentValue - totalInvested;
     const profitPercentage = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
