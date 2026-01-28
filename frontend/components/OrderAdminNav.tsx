@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 
 interface OrderAdminNavProps {
-    activeTab: 'dashboard' | 'orders' | 'pending' | 'manage' | 'shipped' | 'gold';
+    activeTab: 'dashboard' | 'orders' | 'pending' | 'manage' | 'shipped' | 'gold' | 'hub';
 }
 
 export default function OrderAdminNav({ activeTab }: OrderAdminNavProps) {
@@ -41,16 +41,26 @@ export default function OrderAdminNav({ activeTab }: OrderAdminNavProps) {
                     return (
                         <TouchableOpacity
                             key={tab.id}
-                            onPress={() => router.replace(tab.route as any)}
-                            className="items-center justify-center flex-1"
+                            onPress={() => router.push(tab.route as any)}
+                            style={{
+                                flex: 1,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: isActive ? 1 : 0.6
+                            }}
                             activeOpacity={0.6}
                         >
-                            <View
-                                className={`items-center justify-center ${isActive ? '' : 'opacity-60'}`}
-                            >
+                            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                                 <View
-                                    className={`items-center justify-center rounded-xl px-2 py-1.5 ${isActive ? 'bg-blue-50' : ''}`}
-                                    style={{ minWidth: 45 }}
+                                    style={{
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: 12,
+                                        paddingHorizontal: 8,
+                                        paddingVertical: 6,
+                                        backgroundColor: isActive ? '#eff6ff' : 'transparent',
+                                        minWidth: 45
+                                    }}
                                 >
                                     <Ionicons
                                         name={(isActive ? tab.activeIcon : tab.icon) as any}
@@ -58,7 +68,14 @@ export default function OrderAdminNav({ activeTab }: OrderAdminNavProps) {
                                         color={isActive ? '#2563eb' : '#64748b'}
                                     />
                                     <Text
-                                        className={`text-[7.5px] font-black uppercase tracking-tight mt-1 ${isActive ? 'text-blue-600' : 'text-slate-500'}`}
+                                        style={{
+                                            fontSize: 7.5,
+                                            fontWeight: '900',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: -0.5,
+                                            marginTop: 4,
+                                            color: isActive ? '#2563eb' : '#64748b'
+                                        }}
                                         numberOfLines={1}
                                     >
                                         {tab.label}
@@ -66,7 +83,14 @@ export default function OrderAdminNav({ activeTab }: OrderAdminNavProps) {
                                 </View>
                                 {isActive && (
                                     <View
-                                        className="absolute -bottom-1 w-6 h-0.5 rounded-full bg-blue-600"
+                                        style={{
+                                            position: 'absolute',
+                                            bottom: -4,
+                                            width: 24,
+                                            height: 2,
+                                            borderRadius: 9999,
+                                            backgroundColor: '#2563eb'
+                                        }}
                                     />
                                 )}
                             </View>

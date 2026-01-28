@@ -112,6 +112,7 @@ export default function Login() {
                 await SecureStore.setItemAsync('userToken', adminData.token);
                 await SecureStore.setItemAsync('userData', JSON.stringify(adminData.admin));
                 await SecureStore.setItemAsync('userType', 'admin');
+                await SecureStore.deleteItemAsync('mpinVerified');
 
                 setLoading(false);
 
@@ -151,6 +152,7 @@ export default function Login() {
                 await SecureStore.setItemAsync('userToken', buyerData.data.token);
                 await SecureStore.setItemAsync('userData', JSON.stringify(buyerData.data.user));
                 await SecureStore.setItemAsync('userType', 'buyer');
+                await SecureStore.deleteItemAsync('mpinVerified');
 
                 setLoading(false);
                 router.replace('/buyer_dashboard');

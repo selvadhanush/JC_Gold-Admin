@@ -5,6 +5,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../../api';
 import { showToast } from '../../utils/toast';
+import { Skeleton } from '../../components/Skeleton';
 
 export default function ManageGoldRates() {
     const router = useRouter();
@@ -112,7 +113,42 @@ export default function ManageGoldRates() {
 
             <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
                 {loading ? (
-                    <ActivityIndicator size="large" color="#f97316" className="mt-10" />
+                    <>
+                        <View className="mb-8">
+                            <View className="flex-row items-center mb-6">
+                                <Skeleton width={32} height={32} borderRadius={16} />
+                                <Skeleton width={120} height={24} style={{ marginLeft: 12 }} />
+                            </View>
+                            <View className="space-y-4">
+                                {[1, 2, 3].map((i) => (
+                                    <View key={i} style={{ backgroundColor: 'white', borderWidth: 1, borderColor: '#f3f4f6', padding: 20, borderRadius: 24, marginBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <View className="flex-1">
+                                            <Skeleton width={80} height={12} style={{ marginBottom: 8 }} />
+                                            <Skeleton width={120} height={32} />
+                                        </View>
+                                        <Skeleton width={40} height={40} borderRadius={12} />
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                        <View className="mb-8">
+                            <View className="flex-row items-center mb-6">
+                                <Skeleton width={32} height={32} borderRadius={16} />
+                                <Skeleton width={120} height={24} style={{ marginLeft: 12 }} />
+                            </View>
+                            <View className="space-y-4">
+                                {[1, 2, 3].map((i) => (
+                                    <View key={i} style={{ backgroundColor: 'white', borderWidth: 1, borderColor: '#f3f4f6', padding: 20, borderRadius: 24, marginBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <View className="flex-1">
+                                            <Skeleton width={80} height={12} style={{ marginBottom: 8 }} />
+                                            <Skeleton width={120} height={32} />
+                                        </View>
+                                        <Skeleton width={40} height={40} borderRadius={12} />
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    </>
                 ) : (
                     <>
                         {/* Gold Section */}

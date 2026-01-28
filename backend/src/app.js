@@ -37,21 +37,28 @@ app.use('/api/v1/admin-management', require('./routes/admin_management.routes'))
 app.use('/api/v1/super-admin', require('./routes/super_admin.routes'));
 app.use('/api/v1/admin/notifications', require('./routes/admin_notification.routes'));
 app.use('/api/v1/support', require('./routes/support.routes'));
+app.use('/api/v1/general-tickets', require('./routes/generalTicket.routes'));
+app.use('/api/v1/maintenance', require('./routes/maintenance.routes'));
 
-// Buyer Routes
+// Buyer Routes - Apply maintenance middleware
+const { checkMaintenance } = require('./middlewares/maintenance.middleware');
+
+// Auth routes don't need maintenance check (buyers need to login to see maintenance status)
 app.use('/api/v1/buyer/auth', require('./routes/buyer/auth.routes'));
-app.use('/api/v1/buyer/profile', require('./routes/buyer/profile.routes'));
-app.use('/api/v1/buyer/addresses', require('./routes/buyer/address.routes'));
-app.use('/api/v1/buyer/products', require('./routes/buyer/product.routes'));
-app.use('/api/v1/buyer/wishlist', require('./routes/buyer/wishlist.routes'));
-app.use('/api/v1/buyer/cart', require('./routes/buyer/cart.routes'));
-app.use('/api/v1/buyer/orders', require('./routes/buyer/order.routes'));
-app.use('/api/v1/buyer/payments', require('./routes/buyer/payment.routes'));
-app.use('/api/v1/buyer/schemes', require('./routes/buyer/scheme.routes'));
-app.use('/api/v1/buyer/notifications', require('./routes/buyer/notification.routes'));
-app.use('/api/v1/buyer/digital-gold', require('./routes/buyer/digitalGold.routes'));
-app.use('/api/v1/buyer/kyc', require('./routes/buyer/kyc.routes'));
-app.use('/api/v1/buyer/mpin', require('./routes/buyer/mpin.routes'));
+// All other buyer routes with maintenance check
+app.use('/api/v1/buyer/profile', checkMaintenance, require('./routes/buyer/profile.routes'));
+app.use('/api/v1/buyer/addresses', checkMaintenance, require('./routes/buyer/address.routes'));
+app.use('/api/v1/buyer/products', checkMaintenance, require('./routes/buyer/product.routes'));
+app.use('/api/v1/buyer/wishlist', checkMaintenance, require('./routes/buyer/wishlist.routes'));
+app.use('/api/v1/buyer/cart', checkMaintenance, require('./routes/buyer/cart.routes'));
+app.use('/api/v1/buyer/orders', checkMaintenance, require('./routes/buyer/order.routes'));
+app.use('/api/v1/buyer/payments', checkMaintenance, require('./routes/buyer/payment.routes'));
+app.use('/api/v1/buyer/schemes', checkMaintenance, require('./routes/buyer/scheme.routes'));
+app.use('/api/v1/buyer/notifications', checkMaintenance, require('./routes/buyer/notification.routes'));
+app.use('/api/v1/buyer/digital-gold', checkMaintenance, require('./routes/buyer/digitalGold.routes'));
+app.use('/api/v1/buyer/kyc', checkMaintenance, require('./routes/buyer/kyc.routes'));
+app.use('/api/v1/buyer/mpin', checkMaintenance, require('./routes/buyer/mpin.routes'));
+app.use('/api/v1/buyer/bank-account', checkMaintenance, require('./routes/buyer/bankAccount.routes'));
 
 // Admin Digital Gold routes
 console.log('--- ATTEMPTING TO MOUNT ADMIN DIGITAL GOLD ROUTES ---');

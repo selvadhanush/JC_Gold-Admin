@@ -44,7 +44,7 @@ exports.redeemGoldValidation = Joi.object({
 
 // Admin: Approval Validation
 exports.approveTransactionValidation = Joi.object({
-    status: Joi.string().valid('APPROVED', 'REJECTED').required(),
+    status: Joi.string().valid('APPROVED', 'REJECTED', 'COMPLETED').required(),
     rejectionReason: Joi.string().when('status', {
         is: 'REJECTED',
         then: Joi.required(),

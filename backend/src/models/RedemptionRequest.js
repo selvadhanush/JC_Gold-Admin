@@ -12,7 +12,7 @@ const redemptionRequestSchema = new mongoose.Schema({
     },
     redeemType: {
         type: String,
-        enum: ['CASH', 'GOLD', 'ACCESSORY'],
+        enum: ['CASH', 'PHYSICAL_GOLD', 'ACCESSORY'],
         required: true,
     },
     goldGrams: {
@@ -35,13 +35,27 @@ const redemptionRequestSchema = new mongoose.Schema({
         zipCode: String,
         phoneNumber: String,
     },
+    bankDetails: {
+        accountHolderName: String,
+        accountNumber: String,
+        ifscCode: String,
+        bankName: String,
+        branchName: String,
+        accountType: String,
+    },
     productId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Product',
     },
+    pickupLocation: {
+        storeName: String,
+        address: String,
+        contactNumber: String,
+        instructions: String,
+    },
     status: {
         type: String,
-        enum: ['REQUESTED', 'APPROVED', 'REJECTED', 'DISPATCHED', 'COMPLETED', 'CANCELLED'],
+        enum: ['REQUESTED', 'APPROVED', 'REJECTED', 'READY_FOR_PICKUP', 'DISPATCHED', 'COMPLETED', 'CANCELLED'],
         default: 'REQUESTED',
     },
     approvedBy: {
@@ -58,6 +72,9 @@ const redemptionRequestSchema = new mongoose.Schema({
         type: Date,
     },
     completionDate: {
+        type: Date,
+    },
+    collectionDate: {
         type: Date,
     },
     trackingNumber: {

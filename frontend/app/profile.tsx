@@ -2,290 +2,332 @@ import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
-    ScrollView,
+    Image,
     TouchableOpacity,
+    ScrollView,
+    Switch,
     Alert,
-    KeyboardAvoidingView,
+    Share,
+    Linking,
     Platform,
-    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Input from '../components/Input';
-import Button from '../components/Button';
+import * as ImagePicker from 'expo-image-picker';
 import { API_ENDPOINTS, getAuthHeaders } from '../api';
-import * as SecureStore from 'expo-secure-store';
 import BottomNav from '../components/BottomNav';
-import Skeleton from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
+import * as SecureStore from 'expo-secure-store';
+import { showToast } from '../utils/toast';
+import ConfirmationModal from '../components/ConfirmationModal';
+
+interface UserProfile {
+    _id: string;
+    name: string;
+    phoneNumber: string;
+    avatar?: string;
+    email?: string;
+    location?: string;
+}
 
 export default function Profile() {
     const router = useRouter();
-    const [user, setUser] = useState<any>(null);
-    const [name, setName] = useState('');
-    const [phoneNumber, setPhoneNumber] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [updating, setUpdating] = useState(false);
-
-    // Password change fields
-    const [currentPassword, setCurrentPassword] = useState('');
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+    const [user, setUser] = useState<UserProfile | null>(null);
+    const [kycStatus, setKycStatus] = useState<string>('NOT_SUBMITTED');
+    const [bankStatus, setBankStatus] = useState<string>('NOT_SUBMITTED');
+    const [mpinStatus, setMpinStatus] = useState<{ isSet: boolean, locked: boolean }>({ isSet: false, locked: false });
+    const [loading, setLoading] = useState(true);
+    const [pushNotifications, setPushNotifications] = useState(true);
+    const [biometricAuth, setBiometricAuth] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     useEffect(() => {
-        fetchProfile();
+        const loadData = async () => {
+            await Promise.all([fetchProfile(), fetchKycStatus(), fetchMpinStatus(), fetchBankStatus()]);
+            setLoading(false);
+        };
+        loadData();
     }, []);
 
+    const fetchKycStatus = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.BUYER_KYC_STATUS, { headers });
+            const data = await response.json();
+            if (data.success) {
+                setKycStatus(data.data.status);
+            }
+        } catch (error) {
+            console.error('Error fetching KYC status:', error);
+        }
+    };
+
+    const fetchBankStatus = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.BUYER_BANK_ACCOUNT, { headers });
+            const data = await response.json();
+            if (data.success && data.data) {
+                setBankStatus(data.data.status);
+            } else {
+                setBankStatus('NOT_SUBMITTED');
+            }
+        } catch (error) {
+            console.error('Error fetching Bank status:', error);
+        }
+    };
+
+    const fetchMpinStatus = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.BUYER_MPIN_STATUS, { headers });
+            const data = await response.json();
+            if (data.success) {
+                setMpinStatus({
+                    isSet: data.data.isSet,
+                    locked: data.data.locked
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching MPIN status:', error);
+        }
+    };
+
     const fetchProfile = async () => {
-        setLoading(true);
         try {
             const headers = await getAuthHeaders();
             const response = await fetch(API_ENDPOINTS.BUYER_PROFILE, { headers });
             const data = await response.json();
             if (data.success) {
                 setUser(data.data);
-                setName(data.data.name);
-                setPhoneNumber(data.data.phoneNumber || '');
             }
         } catch (error) {
-            console.error('Fetch Profile Error:', error);
+            console.error('Error fetching profile:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleUpdateProfile = async () => {
-        setUpdating(true);
-        try {
-            const headers = await getAuthHeaders();
-            const response = await fetch(API_ENDPOINTS.BUYER_PROFILE, {
-                method: 'PUT',
-                headers,
-                body: JSON.stringify({ name, phoneNumber }),
-            });
-            const data = await response.json();
-            if (data.success) {
-                Alert.alert('Success', 'Profile updated successfully');
-                setUser(data.data);
-            } else {
-                Alert.alert('Error', data.message || 'Update failed');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'Connection failed');
-        } finally {
-            setUpdating(false);
-        }
-    };
-
-    const handleChangePassword = async () => {
-        if (!currentPassword || !newPassword || !confirmPassword) {
-            Alert.alert('Error', 'Please fill all password fields');
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            Alert.alert('Error', 'Passwords do not match');
+    const handleUpdateProfileImage = async () => {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permissionResult.granted) {
+            Alert.alert('Permission Required', 'We need access to your photos to update your profile picture.');
             return;
         }
 
-        setUpdating(true);
-        try {
-            const headers = await getAuthHeaders();
-            const response = await fetch(`${API_ENDPOINTS.BUYER_PROFILE}/password`, {
-                method: 'PUT',
-                headers,
-                body: JSON.stringify({ currentPassword, newPassword }),
-            });
-            const data = await response.json();
-            if (data.success) {
-                Alert.alert('Success', 'Password changed successfully');
-                setCurrentPassword('');
-                setNewPassword('');
-                setConfirmPassword('');
-            } else {
-                Alert.alert('Error', data.message || 'Password change failed');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'Connection failed');
-        } finally {
-            setUpdating(false);
-        }
-    };
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+        });
 
-    const handleLogout = async () => {
-        Alert.alert(
-            'Logout',
-            'Are you sure you want to exit?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Logout',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await SecureStore.deleteItemAsync('userToken');
-                        await SecureStore.deleteItemAsync('userData');
-                        await SecureStore.deleteItemAsync('userType');
-                        router.replace('/login');
-                    }
+        if (!result.canceled) {
+            const formData = new FormData();
+            formData.append('profileImage', {
+                uri: result.assets[0].uri,
+                type: 'image/jpeg',
+                name: 'profile.jpg',
+            } as any);
+
+            try {
+                const headers = await getAuthHeaders();
+                // Remove Content-Type header to let browser set it with boundary
+                const { 'Content-Type': _, ...otherHeaders } = headers as any;
+
+                const response = await fetch(API_ENDPOINTS.BUYER_PROFILE, {
+                    method: 'PUT',
+                    headers: {
+                        ...otherHeaders,
+                    },
+                    body: formData,
+                });
+                const data = await response.json();
+                if (data.success) {
+                    setUser(prev => prev ? { ...prev, avatar: data.data.avatar || data.data.profileImage } : null);
+                    showToast.success('Profile picture updated');
                 }
-            ]
-        );
+            } catch (error) {
+                console.error('Error updating profile image:', error);
+                showToast.error('Failed to update profile picture');
+            }
+        }
     };
 
-    const renderSkeleton = () => (
-        <SafeAreaView className="flex-1 bg-white">
-            <View className="px-6 py-4 flex-row items-center border-b border-gray-50 h-16">
-                <Skeleton width={100} height={24} />
+    const handleLogout = () => {
+        setShowLogoutModal(true);
+    };
+
+    const confirmLogout = async () => {
+        await Promise.all([
+            SecureStore.deleteItemAsync('userToken'),
+            SecureStore.deleteItemAsync('userType'),
+            SecureStore.deleteItemAsync('userData'),
+        ]);
+        router.replace('/login');
+    };
+
+    const shareApp = async () => {
+        try {
+            await Share.share({
+                message: 'Check out JC Gold & Diamonds for exclusive jewelry schemes and collections!',
+            });
+        } catch (error) {
+            console.error('Error sharing app:', error);
+        }
+    };
+
+    const MenuItem = ({ icon, label, onPress, value, type = 'link', color = '#111827' }: any) => (
+        <TouchableOpacity
+            onPress={type === 'link' ? onPress : undefined}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderColor: '#F3F4F6' }}
+            disabled={type === 'switch'}
+        >
+            <View style={{ width: 40, height: 40, backgroundColor: '#F9FAFB', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                <Ionicons name={icon} size={20} color={color} />
             </View>
-            <View className="px-6 mt-10">
-                <Skeleton width="100%" height={200} style={{ borderRadius: 40 }} className="mb-10" />
-                <Skeleton width={120} height={12} className="mb-6" />
-                <Skeleton width="100%" height={300} style={{ borderRadius: 32 }} />
-            </View>
-        </SafeAreaView>
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: color }}>{label}</Text>
+            {value && typeof value === 'string' && (
+                <View style={{ backgroundColor: (value === 'VERIFIED' || value === 'APPROVED') ? '#DCFCE7' : value === 'PENDING' ? '#FEF9C3' : '#FEE2E2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginRight: 8 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '900', color: (value === 'VERIFIED' || value === 'APPROVED') ? '#15803D' : value === 'PENDING' ? '#854D0E' : '#EF4444' }}>{value}</Text>
+                </View>
+            )}
+            {type === 'link' && <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />}
+            {type === 'switch' && (
+                <Switch
+                    value={value}
+                    onValueChange={onPress}
+                    trackColor={{ false: '#D1D5DB', true: '#f97316' }}
+                    thumbColor={Platform.OS === 'ios' ? '#fff' : value ? '#fff' : '#f4f3f4'}
+                />
+            )}
+        </TouchableOpacity>
     );
 
-    if (loading) return renderSkeleton();
+    if (loading) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+                <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
+                    <Skeleton width={100} height={24} />
+                </View>
+                <View style={{ paddingHorizontal: 24, marginTop: 40 }}>
+                    <Skeleton width="100%" height={200} style={{ borderRadius: 40, marginBottom: 40 }} />
+                    <Skeleton width={120} height={12} style={{ marginBottom: 24 }} />
+                    <Skeleton width="100%" height={300} style={{ borderRadius: 32 }} />
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
-        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }} edges={['top']}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            {/* Minimal Header */}
-            <View className="px-6 py-4 flex-row items-center justify-between bg-white border-b border-gray-50">
-                <View className="w-10" />
-                <Text className="text-xl font-black text-gray-900">Setting & Profile</Text>
-                <View className="w-10" />
+            <View style={{ paddingHorizontal: 24, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#F9FAFB' }}>
+                <Text style={{ fontSize: 24, fontWeight: '900', color: '#111827' }}>Profile</Text>
+                <TouchableOpacity onPress={() => router.push('/notifications')} style={{ width: 40, height: 40, backgroundColor: '#F9FAFB', borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F3F4F6' }}>
+                    <Ionicons name="notifications-outline" size={20} color="#111827" />
+                </TouchableOpacity>
             </View>
 
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                className="flex-1"
-            >
-                <ScrollView showsVerticalScrollIndicator={false} className="px-6" contentContainerStyle={{ paddingBottom: 120 }}>
-                    {/* Premium Profile ID Card */}
-                    <View className="mt-4 mb-10">
-                        <View className="bg-gray-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
-                            {/* Decorative gold gradient substitute */}
-                            <View className="absolute top-0 right-0 w-32 h-32 bg-primary-600/20 rounded-full -mr-10 -mt-10" />
-                            <View className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12" />
-
-                            <View className="flex-row items-center mb-6">
-                                <View className="w-20 h-20 bg-white/10 rounded-3xl items-center justify-center border border-white/20">
-                                    <Text className="text-4xl">🤴</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                {/* Profile Header */}
+                <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                    <TouchableOpacity onPress={handleUpdateProfileImage} style={{ position: 'relative', marginBottom: 16 }}>
+                        <View style={{ width: 120, height: 120, borderRadius: 60, overflow: 'hidden', borderWidth: 4, borderColor: 'white', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10 }}>
+                            {user?.avatar ? (
+                                <Image source={{ uri: user.avatar }} style={{ width: '100%', height: '100%' }} />
+                            ) : (
+                                <View style={{ width: '100%', height: '100%', backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={{ fontSize: 40, fontWeight: 'bold', color: '#9CA3AF' }}>{user?.name?.[0] || 'U'}</Text>
                                 </View>
-                                <View className="ml-5">
-                                    <Text className="text-2xl font-black text-white">{user?.name || 'Gold Member'}</Text>
-                                    <View className="flex-row items-center mt-1">
-                                        <View className="w-2 h-2 rounded-full bg-primary-500 mr-2" />
-                                        <Text className="text-white/50 text-xs font-bold uppercase tracking-widest leading-none">Premium Buyer</Text>
-                                    </View>
-                                </View>
-                            </View>
-
-                            <View className="h-[1px] bg-white/10 w-full mb-6" />
-
-                            <View className="flex-row justify-between">
-                                <View>
-                                    <Text className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-1">Email Address</Text>
-                                    <Text className="text-white text-sm font-medium">{user?.email}</Text>
-                                </View>
-                                <View className="items-end">
-                                    <Text className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-1">Member Since</Text>
-                                    <Text className="text-white text-sm font-medium">Jan 2024</Text>
-                                </View>
-                            </View>
+                            )}
                         </View>
-                    </View>
-
-                    {/* Navigation Menu */}
-                    <View className="mb-10">
-                        <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[3px] mb-6">Account Settings</Text>
-
-                        <View className="space-y-4">
-                            <View className="bg-gray-50 rounded-[32px] p-6 mb-4">
-                                <View className="flex-row items-center justify-between mb-6">
-                                    <Text className="text-lg font-black text-gray-900">Personal Info</Text>
-                                    <Ionicons name="person-outline" size={20} color="#f97316" />
-                                </View>
-                                <Input
-                                    label="Full Name"
-                                    placeholder="Enter your name"
-                                    value={name}
-                                    onChangeText={setName}
-                                    containerClassName="mb-4"
-                                />
-                                <Input
-                                    label="Phone Number"
-                                    placeholder="Enter your phone number"
-                                    value={phoneNumber}
-                                    onChangeText={setPhoneNumber}
-                                    keyboardType="phone-pad"
-                                    containerClassName="mb-6"
-                                />
-                                <Button
-                                    title="Save Changes"
-                                    onPress={handleUpdateProfile}
-                                    loading={updating}
-                                    variant="primary"
-                                    className="rounded-2xl"
-                                />
-                            </View>
-
-                            <View className="bg-gray-50 rounded-[32px] p-6 mb-4">
-                                <View className="flex-row items-center justify-between mb-6">
-                                    <Text className="text-lg font-black text-gray-900">Security & Sign-in</Text>
-                                    <Ionicons name="lock-closed-outline" size={20} color="#f97316" />
-                                </View>
-                                <Input
-                                    label="Current Password"
-                                    placeholder="••••••••"
-                                    value={currentPassword}
-                                    onChangeText={setCurrentPassword}
-                                    secureTextEntry
-                                    containerClassName="mb-4"
-                                />
-                                <Input
-                                    label="New Password"
-                                    placeholder="••••••••"
-                                    value={newPassword}
-                                    onChangeText={setNewPassword}
-                                    secureTextEntry
-                                    containerClassName="mb-4"
-                                />
-                                <Input
-                                    label="Confirm New Password"
-                                    placeholder="••••••••"
-                                    value={confirmPassword}
-                                    onChangeText={setConfirmPassword}
-                                    secureTextEntry
-                                    containerClassName="mb-6"
-                                />
-                                <Button
-                                    title="Update Password"
-                                    onPress={handleChangePassword}
-                                    loading={updating}
-                                    variant="primary"
-                                    className="rounded-2xl"
-                                />
-                            </View>
+                        <View style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: '#f97316', width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: 'white' }}>
+                            <Ionicons name="camera" size={16} color="white" />
                         </View>
-                    </View>
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#111827', marginBottom: 4 }}>{user?.name || 'User'}</Text>
+                    <Text style={{ fontSize: 14, color: '#6B7280' }}>{user?.phoneNumber}</Text>
+                </View>
 
-                    {/* Footer Actions */}
-                    <View className="pb-20">
-                        <TouchableOpacity
-                            onPress={handleLogout}
-                            className="bg-red-50 py-5 rounded-[28px] items-center flex-row justify-center border border-red-100"
-                        >
-                            <Ionicons name="log-out-outline" size={22} color="#ef4444" className="mr-3" />
-                            <Text className="text-red-500 font-black text-lg ml-2">Logout Account</Text>
-                        </TouchableOpacity>
+                {/* Account Settings */}
+                <View style={{ paddingHorizontal: 24 }}>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 16, letterSpacing: 1 }}>Account Settings</Text>
 
-                        <Text className="text-center text-gray-300 text-[10px] font-bold uppercase tracking-[4px] mt-8">JC Gold Version 1.0.4</Text>
-                    </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
+                    <MenuItem icon="person-outline" label="Edit Profile" onPress={() => router.push('/edit_profile')} />
+                    <MenuItem icon="shield-checkmark-outline" label="KYC Verification" value={kycStatus} onPress={() => router.push('/kyc_verification')} />
+                    <MenuItem icon="card-outline" label={bankStatus !== 'NOT_SUBMITTED' ? "Edit Bank Details" : "Bank Account Details"} value={bankStatus === 'NOT_SUBMITTED' ? null : bankStatus} onPress={() => router.push('/bank_details')} />
+                    <MenuItem
+                        icon="lock-closed-outline"
+                        label="Security MPIN"
+                        value={mpinStatus.isSet ? 'CONFIGURED' : 'NOT SET'}
+                        color={mpinStatus.isSet ? '#111827' : '#ea580c'}
+                        onPress={() => router.push(mpinStatus.isSet ? '/mpin_verification' : '/mpin_setup')}
+                    />
+                    <MenuItem icon="location-outline" label="My Addresses" onPress={() => router.push('/addresses')} />
+                    <MenuItem icon="grid-outline" label="My Orders" onPress={() => router.push('/orders')} />
+                </View>
+
+                {/* App Settings */}
+                <View style={{ paddingHorizontal: 24, marginTop: 32 }}>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 16, letterSpacing: 1 }}>App Settings</Text>
+
+                    <MenuItem
+                        icon="notifications-outline"
+                        label="Push Notifications"
+                        type="switch"
+                        value={pushNotifications}
+                        onPress={() => setPushNotifications(prev => !prev)}
+                    />
+                    <MenuItem
+                        icon="finger-print-outline"
+                        label="Biometric Login"
+                        type="switch"
+                        value={biometricAuth}
+                        onPress={() => {
+                            Alert.alert(
+                                'Coming Soon',
+                                'Biometric login will be available in the next version. Stay tuned for faster and more secure authentication!',
+                                [{ text: 'OK' }]
+                            );
+                        }}
+                    />
+                </View>
+
+                {/* Support & Legal */}
+                <View style={{ paddingHorizontal: 24, marginTop: 32 }}>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 16, letterSpacing: 1 }}>Support & Legal</Text>
+
+                    <MenuItem icon="help-circle-outline" label="Help & Support" onPress={() => router.push('/support')} />
+                    <MenuItem icon="share-social-outline" label="Share App" onPress={shareApp} />
+                    <MenuItem icon="document-text-outline" label="Terms & Conditions" onPress={() => Linking.openURL('https://jcgold.com/terms')} />
+                </View>
+
+                <View style={{ paddingHorizontal: 24, marginTop: 32, marginBottom: 40 }}>
+                    <TouchableOpacity
+                        onPress={handleLogout}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEF2F2', paddingVertical: 16, borderRadius: 16, borderWidth: 1, borderColor: '#FECACA' }}
+                    >
+                        <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                        <Text style={{ marginLeft: 8, fontSize: 16, fontWeight: 'bold', color: '#EF4444' }}>Sign Out</Text>
+                    </TouchableOpacity>
+                    <Text style={{ textAlign: 'center', color: '#D1D5DB', fontSize: 12, marginTop: 16 }}>Version 1.0.0 (Build 100)</Text>
+                </View>
+            </ScrollView>
+
             <BottomNav activeTab="profile" />
+
+            <ConfirmationModal
+                visible={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={confirmLogout}
+                title="Sign Out"
+                message="Are you sure you want to sign out? You will need to login again to access your account."
+                type="danger"
+                confirmText="Sign Out"
+            />
         </SafeAreaView>
     );
 }

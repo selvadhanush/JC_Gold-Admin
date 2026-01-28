@@ -17,6 +17,8 @@ import { getAuthHeaders, BASE_URL } from '../../api';
 import Skeleton from '../../components/Skeleton';
 import OrderAdminNav from '../../components/OrderAdminNav';
 import { BlurView } from 'expo-blur';
+import { OrderConfirmationToast } from '../../components/OrderConfirmationToast';
+import { CancelOrderModal } from '../../components/CancelOrderModal';
 
 interface Order {
     _id: string;
@@ -40,6 +42,17 @@ export default function PendingOrdersPage() {
     const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
     const [showActionModal, setShowActionModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+    // Custom toast state
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastConfig, setToastConfig] = useState({
+        title: '',
+        message: '',
+        type: 'success' as 'success' | 'error' | 'info'
+    });
+
+    // Cancel modal state
+    const [showCancelModal, setShowCancelModal] = useState(false);
 
     useEffect(() => {
         fetchPendingOrders();
@@ -85,14 +98,29 @@ export default function PendingOrdersPage() {
             const data = await response.json();
 
             if (data.success) {
-                Alert.alert('Success', `Order updated to ${newStatus}`);
+                setToastConfig({
+                    title: 'Order Verified',
+                    message: `Product has been successfully moved to ${newStatus.toLowerCase()} status.`,
+                    type: 'success'
+                });
+                setToastVisible(true);
                 fetchPendingOrders();
             } else {
-                Alert.alert('Error', data.message || 'Failed to update order');
+                setToastConfig({
+                    title: 'Update Failed',
+                    message: data.message || 'Failed to update order',
+                    type: 'error'
+                });
+                setToastVisible(true);
             }
         } catch (error) {
             console.error('Failed to update order:', error);
-            Alert.alert('Error', 'Failed to update order status');
+            setToastConfig({
+                title: 'Connection Error',
+                message: 'Failed to update order status',
+                type: 'error'
+            });
+            setToastVisible(true);
         } finally {
             setProcessingOrderId(null);
             setShowActionModal(false);
@@ -101,44 +129,47 @@ export default function PendingOrdersPage() {
     };
 
     const handleCancelOrder = async (orderId: string) => {
-        Alert.alert(
-            'Cancel Order',
-            'Are you sure you want to cancel this order? This will trigger a refund request.',
-            [
-                { text: 'No', style: 'cancel' },
-                {
-                    text: 'Yes, Cancel',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            setProcessingOrderId(orderId);
-                            const headers = await getAuthHeaders();
+        try {
+            setProcessingOrderId(orderId);
+            const headers = await getAuthHeaders();
 
-                            const response = await fetch(`${BASE_URL}/api/v1/orders/${orderId}/cancel`, {
-                                method: 'PATCH',
-                                headers,
-                            });
+            const response = await fetch(`${BASE_URL}/api/v1/orders/${orderId}/cancel`, {
+                method: 'PATCH',
+                headers,
+            });
 
-                            const data = await response.json();
+            const data = await response.json();
 
-                            if (data.success) {
-                                Alert.alert('Success', 'Order cancelled successfully');
-                                fetchPendingOrders();
-                            } else {
-                                Alert.alert('Error', data.message || 'Failed to cancel order');
-                            }
-                        } catch (error) {
-                            console.error('Failed to cancel order:', error);
-                            Alert.alert('Error', 'Failed to cancel order');
-                        } finally {
-                            setProcessingOrderId(null);
-                            setShowActionModal(false);
-                            setSelectedOrder(null);
-                        }
-                    },
-                },
-            ]
-        );
+            if (data.success) {
+                setToastConfig({
+                    title: 'Order Cancelled',
+                    message: 'The order has been cancelled and a refund has been initiated.',
+                    type: 'info'
+                });
+                setToastVisible(true);
+                fetchPendingOrders();
+            } else {
+                setToastConfig({
+                    title: 'Cancellation Failed',
+                    message: data.message || 'Failed to cancel order',
+                    type: 'error'
+                });
+                setToastVisible(true);
+            }
+        } catch (error) {
+            console.error('Failed to cancel order:', error);
+            setToastConfig({
+                title: 'Connection Error',
+                message: 'Failed to cancel order',
+                type: 'error'
+            });
+            setToastVisible(true);
+        } finally {
+            setProcessingOrderId(null);
+            setShowCancelModal(false);
+            setShowActionModal(false);
+            setSelectedOrder(null);
+        }
     };
 
     const formatDate = (dateString: string) => {
@@ -269,7 +300,7 @@ export default function PendingOrdersPage() {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                onPress={() => selectedOrder && handleCancelOrder(selectedOrder._id)}
+                                onPress={() => selectedOrder && setShowCancelModal(true)}
                                 disabled={processingOrderId !== null}
                                 className="bg-red-50 border border-red-100 p-6 rounded-[28px] flex-row items-center"
                             >
@@ -394,6 +425,24 @@ export default function PendingOrdersPage() {
             </ScrollView>
 
             <OrderAdminNav activeTab="orders" />
+
+            {/* Custom Centered Toast */}
+            <OrderConfirmationToast
+                visible={toastVisible}
+                onHide={() => setToastVisible(false)}
+                title={toastConfig.title}
+                message={toastConfig.message}
+                type={toastConfig.type}
+            />
+
+            {/* Custom Professional Cancellation Modal */}
+            <CancelOrderModal
+                visible={showCancelModal}
+                onClose={() => setShowCancelModal(false)}
+                onConfirm={() => selectedOrder && handleCancelOrder(selectedOrder._id)}
+                orderNumber={selectedOrder?.orderNumber}
+                isProcessing={processingOrderId !== null}
+            />
         </View>
     );
 }

@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../api';
-import Skeleton from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
 
 const { width } = Dimensions.get('window');
 

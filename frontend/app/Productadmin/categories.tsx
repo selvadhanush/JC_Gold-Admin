@@ -16,10 +16,8 @@ import {
     StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BASE_URL, getAuthHeaders } from '../../api';
-import ProductAdminNav from '../../components/ProductAdminNav';
 import * as ImagePicker from 'expo-image-picker';
 import { CategoryListSkeleton } from '../../components/SkeletonLoader';
 
@@ -36,7 +34,6 @@ interface Category {
 }
 
 export default function CategoriesManagement() {
-    const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -166,7 +163,6 @@ export default function CategoriesManagement() {
     if (loading && !refreshing) {
         return (
             <View className="flex-1 bg-white">
-                <Stack.Screen options={{ headerShown: false }} />
                 <CategoryListSkeleton />
             </View>
         );
@@ -175,7 +171,6 @@ export default function CategoriesManagement() {
     return (
         <View className="flex-1 bg-white">
             <StatusBar barStyle="dark-content" />
-            <Stack.Screen options={{ headerShown: false }} />
 
             {/* Premium Header */}
             <SafeAreaView edges={['top']} className="bg-white px-6 py-4 flex-row justify-between items-center z-50">

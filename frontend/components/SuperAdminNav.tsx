@@ -9,8 +9,12 @@ interface SuperAdminNavProps {
     activeTab?: 'dashboard' | 'admins' | 'users' | 'audit' | 'settings' | 'rates';
 }
 
+import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 export default function SuperAdminNav({ activeTab }: SuperAdminNavProps) {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
     const tabs = [
         { id: 'dashboard', label: 'Home', icon: 'terminal-outline', activeIcon: 'terminal', route: '/Superadmin' },
@@ -21,37 +25,81 @@ export default function SuperAdminNav({ activeTab }: SuperAdminNavProps) {
     ];
 
     return (
-        <View className="absolute bottom-6 left-0 right-0 items-center">
-            <View className="bg-white/95 backdrop-blur-md h-16 rounded-[32px] border border-gray-100 shadow-2xl flex-row items-center justify-around px-2" style={{ width: width - 40 }}>
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+            <BlurView
+                intensity={90}
+                tint="light"
+                style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-around',
+                    alignItems: 'center',
+                    borderTopWidth: 1,
+                    borderTopColor: '#f3f4f6',
+                    backgroundColor: Platform.OS === 'android' ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.95)',
+                    paddingBottom: insets.bottom > 0 ? insets.bottom - 10 : 15,
+                    paddingTop: 15,
+                    height: 70 + (insets.bottom > 0 ? insets.bottom / 2 : 0),
+                    elevation: 12,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: -4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 16,
+                }}
+            >
                 {tabs.map((tab) => {
                     const isActive = activeTab === tab.id;
                     return (
                         <TouchableOpacity
                             key={tab.id}
-                            onPress={() => router.replace(tab.route as any)}
+                            onPress={() => router.push(tab.route as any)}
                             className="items-center justify-center flex-1 h-full"
                             activeOpacity={0.7}
                         >
-                            <View className={`items-center justify-center ${isActive ? '' : 'opacity-40'}`}>
-                                <Ionicons
-                                    name={(isActive ? tab.activeIcon : tab.icon) as any}
-                                    size={20}
-                                    color={isActive ? '#ea580c' : '#000'}
-                                />
-                                <Text
-                                    className={`text-[9px] font-black uppercase tracking-tighter mt-1 ${isActive ? 'text-orange-600' : 'text-gray-400'
-                                        }`}
+                            <View className="items-center justify-center">
+                                <View
+                                    style={{
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: 16,
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 6,
+                                        backgroundColor: isActive ? '#fff7ed' : 'transparent',
+                                        minWidth: 50,
+                                    }}
                                 >
-                                    {tab.label}
-                                </Text>
+                                    <Ionicons
+                                        name={(isActive ? tab.activeIcon : tab.icon) as any}
+                                        size={22}
+                                        color={isActive ? '#ea580c' : '#64748b'}
+                                    />
+                                    <Text
+                                        className={`text-[9px] font-black uppercase tracking-tighter mt-1 ${isActive ? 'text-orange-600' : 'text-gray-400'
+                                            }`}
+                                    >
+                                        {tab.label}
+                                    </Text>
+                                </View>
                                 {isActive && (
-                                    <View className="absolute -bottom-3 w-1.5 h-1.5 rounded-full bg-orange-600" />
+                                    <View
+                                        style={{
+                                            position: 'absolute',
+                                            bottom: -10,
+                                            width: 20,
+                                            height: 4,
+                                            borderRadius: 2,
+                                            backgroundColor: '#ea580c',
+                                            shadowColor: '#ea580c',
+                                            shadowOffset: { width: 0, height: 2 },
+                                            shadowOpacity: 0.4,
+                                            shadowRadius: 4,
+                                        }}
+                                    />
                                 )}
                             </View>
                         </TouchableOpacity>
                     );
                 })}
-            </View>
+            </BlurView>
         </View>
     );
 }

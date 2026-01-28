@@ -12,6 +12,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../../api';
+import { Skeleton } from '../../components/Skeleton';
 
 const { width } = Dimensions.get('window');
 
@@ -96,9 +97,55 @@ export default function AuditLogs() {
 
     if (loading) {
         return (
-            <View className="flex-1 bg-white">
+            <View style={{ flex: 1, backgroundColor: 'white' }}>
                 <Stack.Screen options={{ headerShown: false }} />
-                <ActivityIndicator size="large" color="#000" className="mt-20" />
+                <StatusBar barStyle="dark-content" />
+
+                {/* Header Skeleton */}
+                <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100">
+                    <View className="flex-row justify-between items-center mb-6">
+                        <View>
+                            <Skeleton width={100} height={12} style={{ marginBottom: 8 }} />
+                            <Skeleton width={180} height={28} />
+                        </View>
+                        <Skeleton width={40} height={40} borderRadius={20} />
+                    </View>
+
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6 -mx-6 px-6">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <Skeleton key={i} width={80} height={36} borderRadius={16} style={{ marginRight: 12 }} />
+                        ))}
+                    </ScrollView>
+
+                    <Skeleton width="100%" height={48} borderRadius={16} />
+                </View>
+
+                <ScrollView contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false}>
+                    <View className="flex-row items-center justify-between mb-8">
+                        <Skeleton width={120} height={12} />
+                        <Skeleton width={80} height={20} borderRadius={999} />
+                    </View>
+
+                    {[1, 2, 3, 4].map((i) => (
+                        <View key={i} style={{ backgroundColor: 'white', borderRadius: 32, borderWidth: 1, borderColor: '#f3f4f6', padding: 24, marginBottom: 20 }}>
+                            <View className="flex-row justify-between items-start mb-4">
+                                <View className="flex-1">
+                                    <View className="flex-row items-center mb-2">
+                                        <Skeleton width={8} height={8} borderRadius={4} style={{ marginRight: 8 }} />
+                                        <Skeleton width="60%" height={16} />
+                                    </View>
+                                    <Skeleton width="40%" height={10} />
+                                </View>
+                                <Skeleton width={100} height={24} borderRadius={12} />
+                            </View>
+                            <Skeleton width="100%" height={60} borderRadius={24} style={{ marginBottom: 16 }} />
+                            <View className="flex-row justify-between items-center">
+                                <Skeleton width={120} height={10} />
+                                <Skeleton width={60} height={20} borderRadius={12} />
+                            </View>
+                        </View>
+                    ))}
+                </ScrollView>
             </View>
         );
     }

@@ -6,7 +6,8 @@ const {
     getSettings,
     updateSettings,
     getFilteredAuditLogs,
-    getReport
+    getReport,
+    getReportsStats
 } = require('../controllers/super_admin.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const { authorize } = require('../middlewares/role.middleware');
@@ -20,6 +21,7 @@ router.get('/settings', getSettings);
 router.patch('/settings', updateSettings);
 router.patch('/admins/:id/reset-password', resetAdminPassword);
 router.get('/audit', getFilteredAuditLogs);
+router.get('/reports-stats', getReportsStats);
 router.get('/reports/:type', getReport);
 
 module.exports = router;

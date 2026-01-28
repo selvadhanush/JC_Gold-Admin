@@ -12,7 +12,7 @@ export default function ProductAdminLayout() {
                     'products': 'products',
                     'inventory': 'inventory'
                 };
-                return <ProductAdminNav activeTab={tabMap[routeName] || 'dashboard'} />;
+                return <ProductAdminNav activeTab={tabMap[routeName] || 'dashboard'} navigation={props.navigation} />;
             }}
             screenOptions={{
                 headerShown: false,

@@ -10,13 +10,16 @@ export default function FinanceAdminLayout() {
                     'index': 'dashboard',
                     'waiting_confirmation': 'orders',
                     'schemes': 'schemes',
-                    'payments': 'payments',
+                    'gold_schemes_hub': 'records',
                     'refunds': 'refunds',
                     'enrollments': 'enrollments',
                     'installments': 'installments',
                     'reports': 'reports'
                 };
-                return <FinanceAdminNav activeTab={tabMap[routeName] || 'dashboard'} />;
+                return <FinanceAdminNav
+                    activeTab={tabMap[routeName] || 'dashboard'}
+                    navigation={props.navigation}
+                />;
             }}
             screenOptions={{
                 headerShown: false,
@@ -26,7 +29,7 @@ export default function FinanceAdminLayout() {
             <Tabs.Screen name="index" options={{ title: 'Dashboard' }} />
             <Tabs.Screen name="waiting_confirmation" options={{ title: 'Waiting Confirmation' }} />
             <Tabs.Screen name="schemes" options={{ title: 'Schemes' }} />
-            <Tabs.Screen name="payments" options={{ title: 'Payments' }} />
+            <Tabs.Screen name="gold_schemes_hub" options={{ title: 'Gold & Schemes Hub' }} />
             <Tabs.Screen name="refunds" options={{ title: 'Refunds' }} />
             <Tabs.Screen name="enrollments" options={{ title: 'Enrollments' }} />
             <Tabs.Screen name="installments" options={{ title: 'Installments' }} />

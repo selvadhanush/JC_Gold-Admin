@@ -7,7 +7,9 @@ const {
     approveTransaction,
     approveRedemption,
     getRedemptions,
-    getTransactions
+    getTransactions,
+    markReadyForPickup,
+    markAsCollected
 } = require('../controllers/adminDigitalGold.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const { authorize } = require('../middlewares/role.middleware');
@@ -23,17 +25,21 @@ const router = express.Router();
 router.get('/redemptions', getRedemptions);
 
 router.get('/dashboard-rates', getLatestDashboardRates);
+router.get('/gold-rate', getGoldRates);
 
 router.use(protect);
 
 router.route('/gold-rate')
-    .post(authorize('SUPER_ADMIN', 'FINANCE_ADMIN'), validate(goldRateValidation), logAction('SET_GOLD_RATE', 'DIGITAL_GOLD'), setGoldRate)
-    .get(getGoldRates);
+    .post(authorize('SUPER_ADMIN', 'FINANCE_ADMIN'), validate(goldRateValidation), logAction('SET_GOLD_RATE', 'DIGITAL_GOLD'), setGoldRate);
 
 router.put('/approve/:id', authorize('SUPER_ADMIN', 'FINANCE_ADMIN'), validate(approveTransactionValidation), logAction('APPROVE_GOLD_PURCHASE', 'DIGITAL_GOLD'), approveTransaction);
 router.put('/redemption/approve/:id', authorize('SUPER_ADMIN', 'FINANCE_ADMIN', 'ORDER_ADMIN'), validate(approveTransactionValidation), logAction('APPROVE_GOLD_REDEMPTION', 'DIGITAL_GOLD'), approveRedemption);
 
 router.get('/redemptions', authorize('SUPER_ADMIN', 'FINANCE_ADMIN', 'ORDER_ADMIN'), getRedemptions);
 router.get('/transactions', authorize('SUPER_ADMIN', 'FINANCE_ADMIN', 'ORDER_ADMIN'), getTransactions);
+
+// Physical gold workflow routes
+router.put('/redemption/ready-for-pickup/:id', authorize('SUPER_ADMIN', 'FINANCE_ADMIN', 'ORDER_ADMIN'), logAction('MARK_GOLD_READY_FOR_PICKUP', 'DIGITAL_GOLD'), markReadyForPickup);
+router.put('/redemption/mark-collected/:id', authorize('SUPER_ADMIN', 'FINANCE_ADMIN', 'ORDER_ADMIN'), logAction('MARK_GOLD_COLLECTED', 'DIGITAL_GOLD'), markAsCollected);
 
 module.exports = router;

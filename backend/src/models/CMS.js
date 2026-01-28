@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const cmsSchema = new mongoose.Schema({
     type: {
         type: String,
-        enum: ['BANNER', 'PAGE_CONTENT', 'ANNOUNCEMENT'],
+        enum: ['BANNER', 'PAGE_CONTENT', 'ANNOUNCEMENT', 'TERMS', 'PRIVACY', 'REFUND', 'FAQ'],
         required: true,
     },
     title: {

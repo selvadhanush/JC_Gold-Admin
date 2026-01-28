@@ -143,11 +143,15 @@ exports.getMySchemes = async (req, res) => {
 // @access  Private (Buyer)
 exports.payInstallment = async (req, res) => {
     try {
-        const { amount } = req.body;
+        const { amount, paymentMethod } = req.body;
         const userSchemeId = req.params.id;
 
+        if (paymentMethod !== 'ONLINE') {
+            return res.status(400).json({ success: false, message: 'Scheme installments can only be paid ONLINE.' });
+        }
+
         const userScheme = await UserScheme.findById(userSchemeId).populate('scheme');
-        
+
         if (!userScheme) {
             return res.status(404).json({
                 success: false,
@@ -196,7 +200,7 @@ exports.payInstallment = async (req, res) => {
         // Update user scheme
         userScheme.paidInstallments += 1;
         userScheme.totalAmountPaid += amount;
-        
+
         // Calculate benefits
         const benefitAmount = (amount * userScheme.scheme.benefitPercentage) / 100;
         userScheme.benefitsEarned += benefitAmount;

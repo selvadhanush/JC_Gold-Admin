@@ -152,142 +152,120 @@ export default function OrderManagementPage() {
                 contentContainerStyle={{ paddingBottom: 110 }}
             >
                 {/* Header Section */}
-                <View className="bg-white px-6 pt-14 pb-6 border-b border-gray-100/50">
+                <View className="bg-white px-8 pt-16 pb-10 border-b border-slate-100/50">
                     <View className="flex-row items-center justify-between">
                         <View>
-                            <View className="flex-row items-center mb-1">
-                                <Ionicons name="layers-outline" size={14} color="#64748b" />
-                                <Text className="text-slate-400 text-[10px] font-black uppercase tracking-[2px] ml-1.5">Management</Text>
+                            <View className="flex-row items-center mb-2">
+                                <View className="w-6 h-[1.5px] bg-blue-600 mr-2" />
+                                <Text className="text-blue-600 text-[10px] font-black uppercase tracking-[2px]">Operations Center</Text>
                             </View>
-                            <Text className="text-3xl font-black text-slate-900">Operations</Text>
+                            <Text className="text-4xl font-black text-slate-900 tracking-tight">Management</Text>
                         </View>
-                        <View className="bg-blue-600 w-14 h-14 rounded-2xl items-center justify-center shadow-lg shadow-blue-200">
-                            <Ionicons name="apps" size={26} color="white" />
-                        </View>
+                        <View className="w-16 h-16" />
                     </View>
                 </View>
 
-                {/* Pipeline Performance - Section Icon Added */}
-                <View className="px-6 mt-8">
-                    <View className="flex-row items-center mb-4">
-                        <View className="w-8 h-8 bg-blue-50 rounded-lg items-center justify-center mr-2.5">
-                            <Ionicons name="analytics-outline" size={18} color="#2563eb" />
-                        </View>
-                        <Text className="text-slate-900 font-black text-lg">Order Pipeline</Text>
-                    </View>
-
-                    <View className="flex-row gap-3">
-                        <View className="flex-1 bg-amber-50 rounded-[28px] p-5 border border-amber-100 items-center justify-center">
-                            <View className="w-10 h-10 bg-amber-500 rounded-xl items-center justify-center mb-3">
-                                <Ionicons name="time" size={20} color="white" />
-                            </View>
-                            <Text className="text-2xl font-black text-amber-900">{stats?.pending || 0}</Text>
-                            <Text className="text-[10px] text-amber-600 font-black uppercase tracking-widest mt-0.5">Pending</Text>
-                        </View>
-
-                        <View className="flex-1 bg-blue-50 rounded-[28px] p-5 border border-blue-100 items-center justify-center">
-                            <View className="w-10 h-10 bg-blue-600 rounded-xl items-center justify-center mb-3">
-                                <Ionicons name="airplane" size={20} color="white" />
-                            </View>
-                            <Text className="text-2xl font-black text-blue-900">{stats?.shipped || 0}</Text>
-                            <Text className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-0.5">Transit</Text>
-                        </View>
-
-                        <View className="flex-1 bg-slate-100 rounded-[28px] p-5 border border-slate-200 items-center justify-center">
-                            <View className="w-10 h-10 bg-slate-900 rounded-xl items-center justify-center mb-3">
-                                <Ionicons name="list" size={20} color="white" />
-                            </View>
-                            <Text className="text-2xl font-black text-slate-900">{stats?.total || 0}</Text>
-                            <Text className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-0.5">All Time</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Priority Operations - Section Icon Added */}
+                {/* Pipeline Performance */}
                 <View className="px-6 mt-10">
-                    <View className="flex-row items-center mb-4">
-                        <View className="w-8 h-8 bg-indigo-50 rounded-lg items-center justify-center mr-2.5">
-                            <Ionicons name="flash-outline" size={18} color="#4f46e5" />
-                        </View>
-                        <Text className="text-slate-900 font-black text-lg">Daily Operations</Text>
+                    <View className="flex-row items-center mb-6 pl-2">
+                        <Ionicons name="analytics" size={18} color="#64748b" />
+                        <Text className="text-slate-400 font-black text-[10px] uppercase tracking-[2px] ml-2">Pipeline Performance</Text>
                     </View>
 
-                    {/* Process Pending - Improved with Gradient-like feel */}
+                    <View className="flex-row gap-4">
+                        <View className="flex-1 bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm items-center">
+                            <Text className="text-3xl font-black text-slate-900 mb-1">{stats?.pending || 0}</Text>
+                            <Text className="text-[9px] text-amber-500 font-black uppercase tracking-widest">Pending</Text>
+                        </View>
+
+                        <View className="flex-1 bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm items-center">
+                            <Text className="text-3xl font-black text-slate-900 mb-1">{stats?.shipped || 0}</Text>
+                            <Text className="text-[9px] text-blue-500 font-black uppercase tracking-widest">In Transit</Text>
+                        </View>
+
+                        <View className="flex-1 bg-slate-900 rounded-[32px] p-6 items-center">
+                            <Text className="text-3xl font-black text-white mb-1">{stats?.total || 0}</Text>
+                            <Text className="text-[9px] text-white/50 font-black uppercase tracking-widest">Total</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Main Operations */}
+                <View className="px-6 mt-12">
+                    <View className="flex-row items-center mb-6 pl-2">
+                        <Ionicons name="flash" size={18} color="#64748b" />
+                        <Text className="text-slate-400 font-black text-[10px] uppercase tracking-[2px] ml-2">Direct Actions</Text>
+                    </View>
+
                     <TouchableOpacity
                         onPress={() => router.push('/Orderadmin/pending')}
                         activeOpacity={0.9}
-                        className="bg-indigo-600 rounded-[32px] p-7 mb-4 flex-row items-center justify-between shadow-xl shadow-indigo-200"
+                        className="bg-blue-600 rounded-[40px] p-8 mb-6 flex-row items-center justify-between shadow-2xl shadow-blue-200"
                     >
-                        <View className="flex-1">
-                            <View className="flex-row items-center mb-1">
-                                <Ionicons name="hourglass-outline" size={20} color="white" className="mr-2" />
-                                <Text className="text-white font-black text-xl ml-2">Process Orders</Text>
-                            </View>
-                            <Text className="text-white/70 text-sm font-bold mt-1">
-                                {stats?.pending || 0} orders awaiting attention
+                        <View className="flex-1 pr-4">
+                            <Text className="text-white font-black text-2xl tracking-tight">Process Orders</Text>
+                            <Text className="text-white/70 text-xs font-bold mt-2">
+                                {stats?.pending || 0} batches awaiting priority verification
                             </Text>
                         </View>
-                        <View className="bg-white/20 w-12 h-12 rounded-full items-center justify-center border border-white/30">
-                            <Ionicons name="chevron-forward-outline" size={24} color="white" />
+                        <View className="bg-white/20 w-14 h-14 rounded-full items-center justify-center border border-white/30">
+                            <Ionicons name="arrow-forward" size={24} color="white" />
                         </View>
                     </TouchableOpacity>
 
-                    {/* Secondary Operations Grid */}
                     <View className="flex-row gap-4">
                         <TouchableOpacity
                             onPress={() => router.push('/Orderadmin/shipped')}
-                            activeOpacity={0.7}
-                            className="flex-1 bg-white border border-gray-100 rounded-[28px] p-6 shadow-sm shadow-gray-200"
+                            activeOpacity={0.8}
+                            className="flex-1 bg-white border border-slate-100 rounded-[36px] p-8 shadow-sm"
                         >
-                            <View className="w-12 h-12 bg-sky-50 rounded-2xl items-center justify-center mb-4 border border-sky-100">
-                                <Ionicons name="airplane-outline" size={24} color="#0369a1" />
+                            <View className="w-14 h-14 bg-blue-50 rounded-2xl items-center justify-center mb-6">
+                                <Ionicons name="airplane-outline" size={26} color="#2563eb" />
                             </View>
-                            <Text className="text-slate-900 font-black text-base">Shipments</Text>
-                            <Text className="text-slate-400 text-xs font-bold mt-1">Order Tracking</Text>
+                            <Text className="text-slate-900 font-black text-lg underline decoration-blue-200 underline-offset-4">Shipments</Text>
+                            <Text className="text-slate-400 text-[10px] font-bold uppercase mt-2">Tracking ID</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             onPress={() => router.push('/Orderadmin/orders')}
-                            activeOpacity={0.7}
-                            className="flex-1 bg-white border border-gray-100 rounded-[28px] p-6 shadow-sm shadow-gray-200"
+                            activeOpacity={0.8}
+                            className="flex-1 bg-white border border-slate-100 rounded-[36px] p-8 shadow-sm"
                         >
-                            <View className="w-12 h-12 bg-slate-50 rounded-2xl items-center justify-center mb-4 border border-slate-100">
-                                <Ionicons name="receipt-outline" size={24} color="#334155" />
+                            <View className="w-14 h-14 bg-slate-50 rounded-2xl items-center justify-center mb-6">
+                                <Ionicons name="receipt-outline" size={26} color="#0f172a" />
                             </View>
-                            <Text className="text-slate-900 font-black text-base">Full Registry</Text>
-                            <Text className="text-slate-400 text-xs font-bold mt-1">Order History</Text>
+                            <Text className="text-slate-900 font-black text-lg underline decoration-slate-200 underline-offset-4">Registry</Text>
+                            <Text className="text-slate-400 text-[10px] font-bold uppercase mt-2">Full History</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                {/* System Tools - Grid with Icons */}
-                <View className="px-6 mt-10">
-                    <View className="flex-row items-center mb-4">
-                        <View className="w-8 h-8 bg-slate-100 rounded-lg items-center justify-center mr-2.5">
-                            <Ionicons name="construct-outline" size={18} color="#475569" />
-                        </View>
-                        <Text className="text-slate-900 font-black text-lg">System Utilities</Text>
+                {/* System Utilities */}
+                <View className="px-6 mt-12 pb-32">
+                    <View className="flex-row items-center mb-6 pl-2">
+                        <Ionicons name="construct" size={18} color="#64748b" />
+                        <Text className="text-slate-400 font-black text-[10px] uppercase tracking-[2px] ml-2">System Resources</Text>
                     </View>
 
-                    <View className="bg-white rounded-[32px] p-3 border border-gray-100 shadow-sm shadow-gray-200">
+                    <View className="bg-slate-50 rounded-[40px] p-4 border border-slate-100">
                         <View className="flex-row flex-wrap">
                             {[
-                                { id: 'analytics', label: 'Analytics', icon: 'bar-chart', color: '#6366f1', bg: 'bg-indigo-50', route: '/Orderadmin/analytics' },
-                                { id: 'export', label: 'Report', icon: 'cloud-download', color: '#0ea5e9', bg: 'bg-sky-50', action: exportOrdersToCSV },
-                                { id: 'notifications', label: 'Alerts', icon: 'notifications', color: '#ef4444', bg: 'bg-red-50', route: '/Orderadmin/notifications' },
-                                { id: 'settings', label: 'Settings', icon: 'settings', color: '#64748b', bg: 'bg-slate-50', route: '/Orderadmin/settings' },
+                                { id: 'analytics', label: 'Analytics', icon: 'bar-chart', color: '#6366f1', route: '/Orderadmin/analytics' },
+                                { id: 'export', label: 'Exporters', icon: 'cloud-download', color: '#0ea5e9', action: exportOrdersToCSV },
+                                { id: 'notifications', label: 'Broadcast', icon: 'notifications', color: '#ef4444', route: '/Orderadmin/notifications' },
+                                { id: 'settings', label: 'Settings', icon: 'settings', color: '#64748b', route: '/Orderadmin/settings' },
                             ].map((item) => (
                                 <TouchableOpacity
                                     key={item.id}
                                     onPress={() => item.action ? item.action() : router.push(item.route as any)}
                                     activeOpacity={0.6}
-                                    className="w-1/2 p-2"
+                                    className="w-1/2 p-3"
                                 >
-                                    <View className="bg-gray-50/50 rounded-2xl p-4 flex-row items-center border border-gray-100">
-                                        <View className={`w-9 h-9 ${item.bg} rounded-xl items-center justify-center mr-3`}>
-                                            <Ionicons name={item.icon as any} size={18} color={item.color} />
+                                    <View className="bg-white rounded-[28px] p-5 items-center border border-slate-100 shadow-sm">
+                                        <View className="w-10 h-10 items-center justify-center mb-3">
+                                            <Ionicons name={item.icon as any} size={22} color={item.color} />
                                         </View>
-                                        <Text className="text-slate-700 font-black text-[11px] uppercase tracking-wide">{item.label}</Text>
+                                        <Text className="text-slate-800 font-black text-[10px] uppercase tracking-widest">{item.label}</Text>
                                     </View>
                                 </TouchableOpacity>
                             ))}

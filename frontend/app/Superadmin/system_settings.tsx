@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Switch,
-    Alert,
     TextInput,
     StatusBar,
     Dimensions,
@@ -14,6 +13,9 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../../api';
+import { Skeleton } from '../../components/Skeleton';
+import MaintenanceScheduler from '../../components/MaintenanceScheduler';
+import { showToast } from '../../utils/toast';
 
 const { width } = Dimensions.get('window');
 
@@ -43,7 +45,7 @@ export default function SystemSettings() {
                 setSettings(finalSettings);
             }
         } catch (error) {
-            Alert.alert('Error', 'Failed to load system settings');
+            showToast.error('Failed to load system settings', 'LOAD ERROR');
         } finally {
             setLoading(false);
         }
@@ -62,30 +64,86 @@ export default function SystemSettings() {
     };
 
     const saveSettings = async () => {
+        console.log('🔵 [DEBUG] Deploy Changes button clicked!');
+        console.log('🔵 [DEBUG] Current settings state:', settings);
+
         setSaving(true);
         try {
+            console.log('🔵 [DEBUG] Getting auth headers...');
             const headers = await getAuthHeaders();
+            console.log('🔵 [DEBUG] Headers obtained:', headers);
+
+            console.log('🔵 [DEBUG] Preparing to send PATCH request to:', API_ENDPOINTS.SUPER_SETTINGS);
+            console.log('🔵 [DEBUG] Request body:', JSON.stringify({ settings }));
+
             const response = await fetch(API_ENDPOINTS.SUPER_SETTINGS, {
                 method: 'PATCH',
                 headers,
                 body: JSON.stringify({ settings }),
             });
 
+            console.log('🔵 [DEBUG] Save response status:', response.status);
+            console.log('🔵 [DEBUG] Save response ok:', response.ok);
+
             if (response.ok) {
-                Alert.alert('Success', 'System configuration updated successfully');
+                console.log('✅ [SUCCESS] Settings saved successfully!');
+                console.log('🔵 [DEBUG] Showing success toast...');
+                showToast.success('System configuration updated successfully', 'DEPLOYED');
+            } else {
+                const data = await response.json();
+                console.log('❌ [ERROR] Save failed with data:', data);
+                console.log('🔵 [DEBUG] Showing error toast...');
+                showToast.error(data.message || 'Failed to save settings', 'SAVE FAILED');
             }
         } catch (error) {
-            Alert.alert('Error', 'Failed to save settings');
+            console.log('❌ [ERROR] Exception caught:', error);
+            console.log('🔵 [DEBUG] Showing connection error toast...');
+            showToast.error('Failed to save settings', 'CONNECTION ERROR');
         } finally {
+            console.log('🔵 [DEBUG] Setting saving state to false');
             setSaving(false);
         }
     };
 
     if (loading) {
         return (
-            <View className="flex-1 bg-white">
+            <View style={{ flex: 1, backgroundColor: 'white' }}>
                 <Stack.Screen options={{ headerShown: false }} />
-                <ActivityIndicator size="large" color="#000" className="mt-20" />
+                <StatusBar barStyle="dark-content" />
+
+                {/* Header Skeleton */}
+                <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100 flex-row justify-between items-center">
+                    <View>
+                        <Skeleton width={100} height={12} style={{ marginBottom: 8 }} />
+                        <Skeleton width={150} height={28} />
+                    </View>
+                    <Skeleton width={120} height={40} borderRadius={16} />
+                </View>
+
+                <ScrollView contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false}>
+                    {/* Maintenance Card Skeleton */}
+                    <View style={{ backgroundColor: '#fef2f2', borderRadius: 32, padding: 24, marginBottom: 32, borderWidth: 1, borderColor: '#fee2e2' }}>
+                        <View className="flex-row justify-between items-center mb-4">
+                            <View className="flex-1">
+                                <Skeleton width="60%" height={24} style={{ marginBottom: 8 }} />
+                                <Skeleton width="40%" height={10} />
+                            </View>
+                            <Skeleton width={50} height={30} borderRadius={15} />
+                        </View>
+                        <Skeleton width="100%" height={40} borderRadius={8} />
+                    </View>
+
+                    <Skeleton width={150} height={12} style={{ marginBottom: 24, marginLeft: 4 }} />
+
+                    {/* Setting Item Skeletons */}
+                    {[1, 2, 3].map((i) => (
+                        <View key={i} style={{ backgroundColor: '#f9fafb', borderRadius: 32, padding: 24, marginBottom: 20, borderWidth: 1, borderColor: '#f3f4f6' }}>
+                            <Skeleton width="50%" height={20} style={{ marginBottom: 16 }} />
+                            <Skeleton width="100%" height={56} borderRadius={16} style={{ marginBottom: 16 }} />
+                            <Skeleton width="80%" height={10} />
+                        </View>
+                    ))}
+                </ScrollView>
             </View>
         );
     }
@@ -98,7 +156,6 @@ export default function SystemSettings() {
             <ScrollView
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
-                stickyHeaderIndices={[0]}
             >
                 {/* Premium Header */}
                 <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100 flex-row justify-between items-center">
@@ -110,9 +167,26 @@ export default function SystemSettings() {
                         <Text className="text-2xl font-black text-black">SYSTEM CONFIG</Text>
                     </View>
                     <TouchableOpacity
-                        onPress={saveSettings}
+                        onPressOut={() => {
+                            console.log('🟢 [BUTTON] Deploy Changes button onPressOut triggered!');
+                            if (!saving) {
+                                saveSettings();
+                            }
+                        }}
+                        onPressIn={() => console.log('🟡 [BUTTON] Deploy Changes button touched (onPressIn)')}
                         disabled={saving}
-                        className="bg-black px-6 py-3 rounded-2xl shadow-xl shadow-black/20"
+                        activeOpacity={0.7}
+                        style={{
+                            backgroundColor: saving ? '#6b7280' : '#000000',
+                            paddingHorizontal: 24,
+                            paddingVertical: 12,
+                            borderRadius: 16,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.2,
+                            shadowRadius: 8,
+                            elevation: 8,
+                        }}
                     >
                         {saving ? (
                             <ActivityIndicator color="white" size="small" />
@@ -123,23 +197,8 @@ export default function SystemSettings() {
                 </View>
 
                 <View className="p-6">
-                    {/* Maintenance Card */}
-                    <View className="bg-red-50 rounded-[32px] p-6 mb-8 border border-red-100">
-                        <View className="flex-row justify-between items-center mb-4">
-                            <View className="flex-1 pr-6">
-                                <Text className="text-red-900 font-black text-xl mb-1">Maintenance Mode</Text>
-                                <Text className="text-red-600/60 text-[10px] font-bold uppercase tracking-widest">Global Override</Text>
-                            </View>
-                            <Switch
-                                value={settings.find(s => s.key === 'MAINTENANCE_MODE')?.value || false}
-                                onValueChange={() => handleToggle('MAINTENANCE_MODE')}
-                                trackColor={{ false: '#fca5a5', true: '#dc2626' }}
-                            />
-                        </View>
-                        <Text className="text-red-900/60 text-xs font-medium leading-5">
-                            When active, only Super Admins can access the platform. Buyers will see a service down page.
-                        </Text>
-                    </View>
+                    {/* Maintenance Mode Scheduler */}
+                    <MaintenanceScheduler />
 
                     <Text className="text-gray-400 font-black text-[10px] uppercase tracking-[4px] mb-6 ml-1">Core Thresholds</Text>
 
@@ -150,6 +209,10 @@ export default function SystemSettings() {
                             keyboardType="numeric"
                             value={settings.find(s => s.key === 'LOW_STOCK_THRESHOLD')?.value?.toString()}
                             onChangeText={(v) => handleInputChange('LOW_STOCK_THRESHOLD', v)}
+                            placeholder="Enter threshold value"
+                            placeholderTextColor="#9ca3af"
+                            editable={true}
+                            selectTextOnFocus={true}
                             className="bg-white p-5 rounded-2xl font-black text-black border border-gray-100 text-lg"
                         />
                         <Text className="text-gray-400 text-[9px] font-bold mt-4 uppercase tracking-widest">Lower limit before system triggers "Critical Stock" flags.</Text>
@@ -161,6 +224,10 @@ export default function SystemSettings() {
                             keyboardType="numeric"
                             value={settings.find(s => s.key === 'ORDER_TIMEOUT_MINUTES')?.value?.toString()}
                             onChangeText={(v) => handleInputChange('ORDER_TIMEOUT_MINUTES', v)}
+                            placeholder="Enter timeout in minutes"
+                            placeholderTextColor="#9ca3af"
+                            editable={true}
+                            selectTextOnFocus={true}
                             className="bg-white p-5 rounded-2xl font-black text-black border border-gray-100 text-lg"
                         />
                         <Text className="text-gray-400 text-[9px] font-bold mt-4 uppercase tracking-widest">Time-to-Live for pending checkout sessions.</Text>
@@ -172,6 +239,10 @@ export default function SystemSettings() {
                             keyboardType="numeric"
                             value={settings.find(s => s.key === 'MAX_ORDER_AMOUNT')?.value?.toString()}
                             onChangeText={(v) => handleInputChange('MAX_ORDER_AMOUNT', v)}
+                            placeholder="Enter maximum amount"
+                            placeholderTextColor="#9ca3af"
+                            editable={true}
+                            selectTextOnFocus={true}
                             className="bg-white p-5 rounded-2xl font-black text-black border border-gray-100 text-lg"
                         />
                         <Text className="text-gray-400 text-[9px] font-bold mt-4 uppercase tracking-widest">Global spending limit per transaction for all users.</Text>

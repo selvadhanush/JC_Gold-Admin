@@ -8,12 +8,12 @@ const digitalGoldTransactionSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['BUY', 'REDEEM_CASH', 'REDEEM_GOLD', 'REDEEM_ACCESSORY'],
+        enum: ['BUY', 'REDEEM_CASH', 'REDEEM_PHYSICAL_GOLD', 'REDEEM_ACCESSORY'],
         required: true,
     },
     amountPaid: {
         type: Number,
-        required: function() {
+        required: function () {
             return this.type === 'BUY';
         },
         min: [0, 'Amount must be positive'],
@@ -70,7 +70,7 @@ const digitalGoldTransactionSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Generate transaction ID before save
-digitalGoldTransactionSchema.pre('save', function() {
+digitalGoldTransactionSchema.pre('save', function () {
     if (!this.transactionId) {
         const date = new Date();
         const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');

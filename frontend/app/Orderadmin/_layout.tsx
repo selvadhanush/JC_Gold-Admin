@@ -12,7 +12,8 @@ export default function OrderAdminLayout() {
                     'pending': 'pending',
                     'manage': 'manage',
                     'shipped': 'shipped',
-                    'digital_gold': 'gold'
+                    'digital_gold': 'gold',
+                    'hub': 'hub'
                 };
                 return <OrderAdminNav activeTab={tabMap[routeName] || 'dashboard'} />;
             }}

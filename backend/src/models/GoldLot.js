@@ -49,37 +49,36 @@ const goldLotSchema = new mongoose.Schema({
 goldLotSchema.index({ user: 1, status: 1, purchaseDate: 1 });
 
 // Method to calculate current value based on current market rate
-goldLotSchema.methods.calculateCurrentValue = function(currentRate) {
+goldLotSchema.methods.calculateCurrentValue = function (currentRate) {
     return this.remainingGrams * currentRate;
 };
 
 // Method to calculate profit/loss
-goldLotSchema.methods.calculateProfit = function(currentRate) {
+goldLotSchema.methods.calculateProfit = function (currentRate) {
     const currentValue = this.calculateCurrentValue(currentRate);
     const investedValue = this.remainingGrams * this.pricePerGram;
     return currentValue - investedValue;
 };
 
 // Method to calculate profit percentage
-goldLotSchema.methods.calculateProfitPercentage = function(currentRate) {
+goldLotSchema.methods.calculateProfitPercentage = function (currentRate) {
     const profit = this.calculateProfit(currentRate);
     const investedValue = this.remainingGrams * this.pricePerGram;
     return investedValue > 0 ? (profit / investedValue) * 100 : 0;
 };
 
 // Method to close lot
-goldLotSchema.methods.close = function() {
+goldLotSchema.methods.close = function () {
     if (this.remainingGrams === 0) {
         this.status = 'CLOSED';
     }
 };
 
 // Pre-save hook to auto-close if remaining grams is 0
-goldLotSchema.pre('save', function(next) {
+goldLotSchema.pre('save', async function () {
     if (this.remainingGrams === 0) {
         this.status = 'CLOSED';
     }
-    next();
 });
 
 module.exports = mongoose.model('GoldLot', goldLotSchema);

@@ -129,10 +129,8 @@ exports.approveTransaction = async (req, res, next) => {
             // Link lot to transaction
             transaction.lotsCreated = [lot[0]._id];
 
-            // Update user wallet (for backward compatibility)
-            const user = await User.findById(transaction.user).session(session);
-            user.wallet.goldBalance += transaction.goldGrams;
-            await user.save({ session });
+            // Note: We no longer manually update user.wallet.goldBalance here.
+            // The getWalletBalance API will auto-sync it from active lots.
         }
 
         await transaction.save({ session });
@@ -160,7 +158,7 @@ exports.approveTransaction = async (req, res, next) => {
     }
 };
 
-// @desc    Approve/Reject redemption
+// @desc    Approve/Reject/Complete redemption
 // @route   PUT /api/v1/admin/digital-gold/redemption/approve/:id
 // @access  Private (FINANCE_ADMIN, ORDER_ADMIN, SUPER_ADMIN)
 exports.approveRedemption = async (req, res, next) => {
@@ -175,33 +173,68 @@ exports.approveRedemption = async (req, res, next) => {
             return next(new ErrorResponse('Redemption request not found', 404));
         }
 
+        const transaction = await DigitalGoldTransaction.findById(redemption.transaction).session(session);
+
+        // HANDLE STEP 2: MARK AS COMPLETED (Payment Done)
+        if (status === 'COMPLETED') {
+            if (redemption.status !== 'APPROVED') {
+                return next(new ErrorResponse('Redemption must be APPROVED before marking as completed', 400));
+            }
+
+            redemption.status = 'COMPLETED';
+            redemption.completionDate = Date.now();
+            transaction.status = 'COMPLETED';
+
+            await redemption.save({ session });
+            await transaction.save({ session });
+            await session.commitTransaction();
+            session.endSession();
+
+            // Notify User
+            await notifyRecipient(redemption.user, 'User', {
+                title: 'Payment Completed',
+                message: `Your ${redemption.redeemType} redemption payout has been processed successfully.`,
+                type: 'GOLD_REDEMPTION'
+            });
+
+            return res.status(200).json({ success: true, data: redemption });
+        }
+
+        // HANDLE STEP 1: APPROVE / REJECT
         if (redemption.status !== 'REQUESTED') {
             return next(new ErrorResponse('Redemption already processed', 400));
         }
 
-        redemption.status = status === 'APPROVED' ? 'APPROVED' : 'REJECTED';
+        redemption.status = status; // APPROVED or REJECTED
         redemption.approvedBy = req.admin._id;
         redemption.approvalDate = Date.now();
         redemption.rejectionReason = rejectionReason;
 
-        const transaction = await DigitalGoldTransaction.findById(redemption.transaction).session(session);
-        transaction.status = status === 'APPROVED' ? 'APPROVED' : 'REJECTED';
+        transaction.status = status;
         transaction.adminApprovedBy = req.admin._id;
         transaction.approvalDate = Date.now();
         transaction.rejectionReason = rejectionReason;
 
         if (status === 'REJECTED') {
-            // Refund the gold back to user wallet
+            // REFUND LOGIC: Restore gold balance and lots
             const user = await User.findById(redemption.user).session(session);
             user.wallet.goldBalance += redemption.goldGrams;
             await user.save({ session });
-        }
 
-        // If Cash Redemption and Approved -> Mark as Completed immediately (or after payment, but here we mock it)
-        if (status === 'APPROVED' && redemption.redeemType === 'CASH') {
-            redemption.status = 'COMPLETED';
-            redemption.completionDate = Date.now();
-            transaction.status = 'COMPLETED';
+            // Restore the lots that were consumed
+            if (transaction.lotsUsed && transaction.lotsUsed.length > 0) {
+                const GoldLot = require('../models/GoldLot');
+                for (const lotUsage of transaction.lotsUsed) {
+                    const lot = await GoldLot.findById(lotUsage.lot).session(session);
+                    if (lot) {
+                        lot.remainingGrams += lotUsage.gramsUsed;
+                        if (lot.status === 'CLOSED' && lot.remainingGrams > 0) {
+                            lot.status = 'ACTIVE';
+                        }
+                        await lot.save({ session });
+                    }
+                }
+            }
         }
 
         await redemption.save({ session });
@@ -212,9 +245,9 @@ exports.approveRedemption = async (req, res, next) => {
 
         // Notify Buyer
         await notifyRecipient(redemption.user, 'User', {
-            title: `Gold Redemption ${status}`,
+            title: `Redemption Request ${status}`,
             message: status === 'APPROVED'
-                ? `Your ${redemption.redeemType} redemption request for ${redemption.goldGrams}g has been approved.`
+                ? `Your ${redemption.redeemType} redemption request for ${redemption.goldGrams}g has been approved. Payment/Delivery is being processed.`
                 : `Your redemption request has been rejected. Reason: ${rejectionReason || 'N/A'}. Gold balance has been restored.`,
             type: 'GOLD_REDEMPTION'
         });
@@ -276,6 +309,101 @@ exports.getTransactions = async (req, res, next) => {
             data: transactions
         });
     } catch (err) {
+        next(err);
+    }
+};
+
+// @desc    Mark physical gold as ready for pickup
+// @route   PUT /api/v1/admin/digital-gold/redemption/ready-for-pickup/:id
+// @access  Private (FINANCE_ADMIN, ORDER_ADMIN, SUPER_ADMIN)
+exports.markReadyForPickup = async (req, res, next) => {
+    try {
+        const { pickupLocation } = req.body;
+        const redemption = await RedemptionRequest.findById(req.params.id);
+
+        if (!redemption) {
+            return next(new ErrorResponse('Redemption request not found', 404));
+        }
+
+        if (redemption.redeemType !== 'PHYSICAL_GOLD') {
+            return next(new ErrorResponse('This action is only for physical gold redemptions', 400));
+        }
+
+        if (redemption.status !== 'APPROVED') {
+            return next(new ErrorResponse('Redemption must be APPROVED before marking ready for pickup', 400));
+        }
+
+        redemption.status = 'READY_FOR_PICKUP';
+        redemption.pickupLocation = pickupLocation;
+        await redemption.save();
+
+        // Notify User
+        await notifyRecipient(redemption.user, 'User', {
+            title: 'Gold Ready for Pickup',
+            message: `Your physical gold (${redemption.goldGrams}g) is ready for pickup at ${pickupLocation.storeName}. Please visit the store to collect your gold.`,
+            type: 'GOLD_REDEMPTION'
+        });
+
+        res.status(200).json({
+            success: true,
+            data: redemption
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// @desc    Mark physical gold as collected by buyer
+// @route   PUT /api/v1/admin/digital-gold/redemption/mark-collected/:id
+// @access  Private (FINANCE_ADMIN, ORDER_ADMIN, SUPER_ADMIN)
+exports.markAsCollected = async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const redemption = await RedemptionRequest.findById(req.params.id).session(session);
+
+        if (!redemption) {
+            return next(new ErrorResponse('Redemption request not found', 404));
+        }
+
+        if (redemption.redeemType !== 'PHYSICAL_GOLD') {
+            return next(new ErrorResponse('This action is only for physical gold redemptions', 400));
+        }
+
+        if (redemption.status !== 'READY_FOR_PICKUP') {
+            return next(new ErrorResponse('Gold must be READY_FOR_PICKUP before marking as collected', 400));
+        }
+
+        redemption.status = 'COMPLETED';
+        redemption.collectionDate = Date.now();
+        redemption.completionDate = Date.now();
+        await redemption.save({ session });
+
+        // Update transaction status
+        const transaction = await DigitalGoldTransaction.findById(redemption.transaction).session(session);
+        if (transaction) {
+            transaction.status = 'COMPLETED';
+            await transaction.save({ session });
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+
+        // Notify User
+        await notifyRecipient(redemption.user, 'User', {
+            title: 'Gold Collection Confirmed',
+            message: `Thank you for collecting your physical gold (${redemption.goldGrams}g). Your redemption is now complete.`,
+            type: 'GOLD_REDEMPTION'
+        });
+
+        res.status(200).json({
+            success: true,
+            data: redemption
+        });
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
         next(err);
     }
 };

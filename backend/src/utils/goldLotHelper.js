@@ -5,12 +5,14 @@ const GoldLot = require('../models/GoldLot');
  * @param {ObjectId} userId - User ID
  * @returns {Array} Array of active gold lots
  */
-exports.getActiveLotsFIFO = async (userId) => {
+exports.getActiveLotsFIFO = async (userId, session = null) => {
     return await GoldLot.find({
         user: userId,
         status: 'ACTIVE',
         remainingGrams: { $gt: 0 }
-    }).sort({ purchaseDate: 1 }); // Oldest first (FIFO)
+    })
+        .session(session)
+        .sort({ purchaseDate: 1 }); // Oldest first (FIFO)
 };
 
 /**
@@ -23,7 +25,7 @@ exports.calculateTotalGold = async (userId) => {
         user: userId,
         status: 'ACTIVE'
     });
-    
+
     return lots.reduce((sum, lot) => sum + lot.remainingGrams, 0);
 };
 
@@ -34,38 +36,37 @@ exports.calculateTotalGold = async (userId) => {
  * @param {Number} currentRate - Current gold rate
  * @returns {Object} Redemption details with lots used
  */
-exports.redeemGoldFIFO = async (userId, gramsToRedeem, currentRate) => {
-    const lots = await exports.getActiveLotsFIFO(userId);
-    
+exports.redeemGoldFIFO = async (userId, gramsToRedeem, currentRate, session = null) => {
+    const lots = await exports.getActiveLotsFIFO(userId, session);
+
     let remainingToRedeem = gramsToRedeem;
     const lotsUsed = [];
     const redemptionLots = [];
-    
-    // Check if user has enough gold
-    const totalAvailable = lots.reduce((sum, lot) => sum + lot.remainingGrams, 0);
-    if (totalAvailable < gramsToRedeem) {
-        throw new Error(`Insufficient gold balance. Available: ${totalAvailable}g, Requested: ${gramsToRedeem}g`);
-    }
-    
+
+    // Note: We don't throw error here if totalAvailable < gramsToRedeem
+    // because some users have "legacy" gold in their wallet balance 
+    // that isn't captured in the new Lot-based system.
+    // The controller calling this should verify overall user.wallet.goldBalance.
+
     // FIFO: Take from oldest lots first
     for (const lot of lots) {
         if (remainingToRedeem <= 0) break;
-        
+
         const gramsFromThisLot = Math.min(remainingToRedeem, lot.remainingGrams);
-        
+
         // Update lot
         lot.remainingGrams -= gramsFromThisLot;
         if (lot.remainingGrams === 0) {
             lot.status = 'CLOSED';
         }
-        await lot.save();
-        
+        await lot.save({ session });
+
         // Track usage for transaction
         lotsUsed.push({
             lot: lot._id,
             gramsUsed: gramsFromThisLot
         });
-        
+
         // Track for redemption lot record
         const profit = (currentRate - lot.pricePerGram) * gramsFromThisLot;
         redemptionLots.push({
@@ -75,10 +76,10 @@ exports.redeemGoldFIFO = async (userId, gramsToRedeem, currentRate) => {
             pricePerGramAtRedemption: currentRate,
             profit: profit
         });
-        
+
         remainingToRedeem -= gramsFromThisLot;
     }
-    
+
     return {
         lotsUsed,
         redemptionLots,
@@ -97,18 +98,18 @@ exports.calculatePortfolioSummary = async (userId, currentRate) => {
         user: userId,
         status: 'ACTIVE'
     });
-    
+
     const totalGoldGrams = activeLots.reduce((sum, lot) => sum + lot.remainingGrams, 0);
     const currentValue = totalGoldGrams * currentRate;
-    
+
     // Calculate total invested (only for remaining grams)
-    const totalInvested = activeLots.reduce((sum, lot) => 
+    const totalInvested = activeLots.reduce((sum, lot) =>
         sum + (lot.remainingGrams * lot.pricePerGram), 0
     );
-    
+
     const totalProfit = currentValue - totalInvested;
     const profitPercentage = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
-    
+
     return {
         totalGoldGrams,
         currentValue,

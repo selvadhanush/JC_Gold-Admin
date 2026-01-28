@@ -11,13 +11,13 @@ interface BottomNavProps {
 export default function BottomNav({ activeTab }: BottomNavProps) {
     let router: any = null;
     let pathname: any = '';
-    
+
     try {
         router = useRouter();
     } catch (e) {
         // Router context not available
     }
-    
+
     try {
         pathname = usePathname();
     } catch (e) {
@@ -43,12 +43,17 @@ export default function BottomNav({ activeTab }: BottomNavProps) {
     ) || 'home';
 
     return (
-        <View className="absolute bottom-0 left-0 right-0 z-[100]">
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
             <BlurView
                 intensity={90}
                 tint="light"
-                className="flex-row justify-around items-center border-t-2 border-gray-100 shadow-2xl overflow-hidden"
                 style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-around',
+                    alignItems: 'center',
+                    borderTopWidth: 2,
+                    borderTopColor: '#f3f4f6',
+                    overflow: 'hidden',
                     backgroundColor: Platform.OS === 'android' ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.95)',
                     height: 70,
                     elevation: 12,
@@ -64,21 +69,25 @@ export default function BottomNav({ activeTab }: BottomNavProps) {
                         <TouchableOpacity
                             key={tab.id}
                             onPress={() => {
+                                if (isActive) return;
                                 if (router) {
                                     router.push(tab.route as any);
                                 }
                             }}
-                            className="items-center justify-center flex-1 py-3"
+                            style={{ alignItems: 'center', justifyContent: 'center', flex: 1, paddingVertical: 12 }}
                             activeOpacity={0.6}
                         >
                             <View
-                                className={`items-center justify-center ${isActive ? '' : 'opacity-50'
-                                    }`}
+                                style={{ alignItems: 'center', justifyContent: 'center', opacity: isActive ? 1 : 0.5 }}
                             >
                                 <View
-                                    className={`items-center justify-center rounded-2xl px-4 py-2 ${isActive ? 'bg-orange-50' : ''
-                                        }`}
                                     style={{
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: 16,
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 8,
+                                        backgroundColor: isActive ? '#fff7ed' : 'transparent',
                                         minWidth: 56,
                                     }}
                                 >
@@ -88,10 +97,13 @@ export default function BottomNav({ activeTab }: BottomNavProps) {
                                         color={isActive ? '#ea580c' : '#64748b'}
                                     />
                                     <Text
-                                        className={`text-[9px] font-bold uppercase tracking-wide mt-1 ${isActive ? 'text-orange-600' : 'text-slate-500'
-                                            }`}
                                         style={{
+                                            fontSize: 9,
+                                            fontWeight: 'bold',
+                                            textTransform: 'uppercase',
                                             letterSpacing: 0.5,
+                                            marginTop: 4,
+                                            color: isActive ? '#ea580c' : '#64748b'
                                         }}
                                     >
                                         {tab.label}
@@ -99,8 +111,13 @@ export default function BottomNav({ activeTab }: BottomNavProps) {
                                 </View>
                                 {isActive && (
                                     <View
-                                        className="absolute -bottom-1 w-8 h-1 rounded-full bg-orange-600"
                                         style={{
+                                            position: 'absolute',
+                                            bottom: -4,
+                                            width: 32,
+                                            height: 4,
+                                            borderRadius: 9999,
+                                            backgroundColor: '#ea580c',
                                             shadowColor: '#ea580c',
                                             shadowOffset: { width: 0, height: 2 },
                                             shadowOpacity: 0.4,

@@ -35,12 +35,24 @@ exports.getProfile = async (req, res) => {
 // @access  Private (Buyer)
 exports.updateProfile = async (req, res) => {
     try {
-        const { name, phoneNumber, address } = req.body;
+        const { name, email, phoneNumber, address } = req.body;
 
         const updateData = {};
         if (name) updateData.name = name;
         if (phoneNumber) updateData.phoneNumber = phoneNumber;
         if (address) updateData.address = address;
+
+        // Check if email is being updated and if it's already taken
+        if (email && email !== req.buyer.email) {
+            const emailExists = await User.findOne({ email });
+            if (emailExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email already in use',
+                });
+            }
+            updateData.email = email;
+        }
 
         const user = await User.findByIdAndUpdate(
             req.buyer._id,

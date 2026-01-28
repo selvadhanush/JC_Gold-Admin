@@ -8,6 +8,7 @@ interface ButtonProps {
     loading?: boolean;
     disabled?: boolean;
     className?: string;
+    style?: any;
 }
 
 export default function Button({
@@ -18,6 +19,7 @@ export default function Button({
     loading = false,
     disabled = false,
     className = '',
+    style,
 }: ButtonProps) {
     const baseClasses = 'rounded-xl flex-row items-center justify-center active:opacity-80';
 
@@ -52,6 +54,7 @@ export default function Button({
             className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${disabledClasses} ${className}`}
             onPress={onPress}
             disabled={disabled || loading}
+            style={style}
         >
             {loading ? (
                 <ActivityIndicator color={variant === 'outline' ? '#f97316' : '#ffffff'} />

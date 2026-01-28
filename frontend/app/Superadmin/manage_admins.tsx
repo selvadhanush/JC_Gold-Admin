@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders, BASE_URL } from '../../api';
+import { Skeleton } from '../../components/Skeleton';
 
 interface Admin {
     _id: string;
@@ -179,9 +180,44 @@ export default function ManageAdmins() {
 
     if (loading) {
         return (
-            <View className="flex-1 bg-white">
+            <View style={{ flex: 1, backgroundColor: 'white' }}>
                 <Stack.Screen options={{ headerShown: false }} />
-                <ActivityIndicator size="large" color="#4f46e5" className="mt-20" />
+                <StatusBar barStyle="dark-content" />
+
+                {/* Header Skeleton */}
+                <View className="px-6 pt-12 pb-4 border-b border-gray-100 flex-row justify-between items-center">
+                    <View>
+                        <Skeleton width={100} height={12} style={{ marginBottom: 8 }} />
+                        <Skeleton width={150} height={28} />
+                    </View>
+                    <Skeleton width={48} height={48} borderRadius={16} />
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24 }}>
+                    <View className="flex-row items-center justify-between mb-8">
+                        <Skeleton width={120} height={12} />
+                        <Skeleton width={80} height={20} borderRadius={999} />
+                    </View>
+
+                    {[1, 2, 3, 4].map((i) => (
+                        <View key={i} style={{ backgroundColor: 'white', borderRadius: 32, borderWidth: 1, borderColor: '#f3f4f6', padding: 20, marginBottom: 20 }}>
+                            <View className="flex-row items-center">
+                                <Skeleton width={56} height={56} borderRadius={20} />
+                                <View className="flex-1 ml-4">
+                                    <View className="flex-row justify-between items-center">
+                                        <Skeleton width="60%" height={20} style={{ marginBottom: 6 }} />
+                                        <Skeleton width={40} height={16} borderRadius={8} />
+                                    </View>
+                                    <Skeleton width="40%" height={12} />
+                                </View>
+                            </View>
+                            <View className="mt-4 pt-4 border-t border-gray-50 flex-row justify-between items-center">
+                                <Skeleton width={100} height={12} />
+                                <Skeleton width={20} height={20} borderRadius={10} />
+                            </View>
+                        </View>
+                    ))}
+                </ScrollView>
             </View>
         );
     }

@@ -5,6 +5,8 @@ const Inventory = require('../models/Inventory');
 const ErrorResponse = require('../utils/errorResponse');
 const checkLowStock = require('../utils/stockAlert');
 
+const Refund = require('../models/Refund');
+
 // @desc    Get all orders
 // @route   GET /api/v1/orders
 // @access  Private (Admin)
@@ -95,7 +97,10 @@ exports.updateOrderStatus = async (req, res, next) => {
 // @access  Private (ORDER_ADMIN, SUPER_ADMIN)
 exports.cancelOrder = async (req, res, next) => {
     try {
-        let order = await Order.findById(req.params.id).populate('orderItems');
+        let order = await Order.findById(req.params.id)
+            .populate('orderItems')
+            .populate('payment');
+
         if (!order) {
             return next(new ErrorResponse('Order not found', 404));
         }
@@ -115,9 +120,29 @@ exports.cancelOrder = async (req, res, next) => {
             );
         }
 
+        // Check if refund needed
+        let refundMessage = '';
+        if (order.payment && order.payment.status === 'COMPLETED') {
+            await Refund.create({
+                payment: order.payment._id,
+                order: order._id,
+                amount: order.payment.amount,
+                reason: 'Order Cancelled by Admin',
+                status: 'PENDING'
+            });
+
+            // Update payment status to REFUND_INITIATED or similar if needed, 
+            // but keeping it simple as per plan: Finance will process it.
+            // Optionally could set payment status to 'REFUND_PENDING' but Payment model enum check required.
+            // Payment model enum: ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']
+            // So we leave payment status as COMPLETED until finance processes it to REFUNDED.
+
+            refundMessage = ' and refund request initiated';
+        }
+
         res.status(200).json({
             success: true,
-            message: 'Order cancelled and stock restored',
+            message: `Order cancelled and stock restored${refundMessage}`,
         });
     } catch (err) {
         next(err);
