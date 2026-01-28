@@ -326,7 +326,7 @@ export default function BuyerDashboard() {
     if (loading && !refreshing) return renderSkeleton();
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }} edges={['top']}>
             <Stack.Screen options={{ headerShown: false }} />
 
             {/* Premium Toast Notification */}
@@ -582,20 +582,23 @@ export default function BuyerDashboard() {
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                         <Text style={{ color: '#9CA3AF', fontSize: 10 }}>Invested: </Text>
                                         <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 13 }}>₹{(wallet.totalInvested || 0).toLocaleString()}</Text>
+                                        <Text style={{ color: '#6B7280', fontSize: 9, marginLeft: 8 }}>(@ ₹{((wallet.totalInvested || 0) / (wallet.goldBalance || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}/g)</Text>
                                     </View>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1F2937', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999 }}>
                                         <Text style={{ color: '#fbbf24', fontSize: 9, fontWeight: '900', textTransform: 'uppercase', marginRight: 4 }}>Manage</Text>
                                         <Ionicons name="arrow-forward" size={10} color="#fbbf24" />
                                     </View>
                                 </View>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                         <Text style={{ color: '#9CA3AF', fontSize: 10 }}>Current Value: </Text>
                                         <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 13 }}>₹{((wallet.goldBalance || 0) * goldRate).toLocaleString()}</Text>
                                     </View>
-                                    {wallet.totalProfit > 0 && (
-                                        <View style={{ marginLeft: 12, backgroundColor: 'rgba(34,197,94,0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                                            <Text style={{ color: '#4ade80', fontSize: 9, fontWeight: 'bold' }}>+{wallet.profitPercentage?.toFixed(1)}%</Text>
+                                    {(wallet.totalProfit !== 0) && (
+                                        <View style={{ backgroundColor: (wallet.totalProfit || 0) >= 0 ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                                            <Text style={{ color: (wallet.totalProfit || 0) >= 0 ? '#4ade80' : '#f87171', fontSize: 9, fontWeight: 'bold' }}>
+                                                {(wallet.totalProfit || 0) >= 0 ? '+' : ''}{wallet.profitPercentage?.toFixed(1)}%
+                                            </Text>
                                         </View>
                                     )}
                                 </View>

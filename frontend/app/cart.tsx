@@ -8,8 +8,10 @@ import {
     Alert,
     RefreshControl,
     Dimensions,
+    Modal,
+    ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../api';
@@ -42,6 +44,9 @@ export default function Cart() {
     const [kycStatus, setKycStatus] = useState<string>('NOT_SUBMITTED');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [itemToRemove, setItemToRemove] = useState<string | null>(null);
+    const insets = useSafeAreaInsets();
 
     useEffect(() => {
         fetchCart();
@@ -108,21 +113,30 @@ export default function Cart() {
         }
     };
 
-    const removeItem = async (itemId: string) => {
-        Alert.alert('Remove Piece', 'Are you sure you want to remove this piece from your vault?', [
-            { text: 'Keep', style: 'cancel' },
-            {
-                text: 'Remove',
-                style: 'destructive',
-                onPress: async () => {
-                    try {
-                        const headers = await getAuthHeaders();
-                        await fetch(`${API_ENDPOINTS.BUYER_CART}/${itemId}`, { method: 'DELETE', headers });
-                        fetchCart();
-                    } catch (error) { }
-                },
-            },
-        ]);
+    const removeItem = (itemId: string) => {
+        setItemToRemove(itemId);
+        setShowConfirmModal(true);
+    };
+
+    const confirmRemove = async () => {
+        if (!itemToRemove) return;
+
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(`${API_ENDPOINTS.BUYER_CART}/${itemToRemove}`, { method: 'DELETE', headers });
+            const data = await response.json();
+            if (data.success) {
+                showToast.success('Piece removed from your vault');
+                fetchCart();
+            } else {
+                showToast.error(data.message || 'Failed to remove item');
+            }
+        } catch (error) {
+            showToast.error('Network error. Failed to remove item.');
+        } finally {
+            setShowConfirmModal(false);
+            setItemToRemove(null);
+        }
     };
 
     const subtotal = cartItems.reduce((sum, item) => sum + ((item.priceAtAdd || item.product.price) * item.quantity), 0);
@@ -136,7 +150,7 @@ export default function Cart() {
             <View style={{
                 backgroundColor: 'white',
                 borderRadius: 28,
-                marginBottom: 20,
+                marginBottom: 24,
                 overflow: 'hidden',
                 borderWidth: 1,
                 borderColor: '#F3F4F6',
@@ -256,27 +270,30 @@ export default function Cart() {
             {cartItems.length > 0 && !loading && (
                 <View style={{
                     position: 'absolute',
-                    bottom: 100,
+                    bottom: insets.bottom + 100,
                     left: 20,
                     right: 20,
                     backgroundColor: '#111827',
-                    borderRadius: 32,
-                    padding: 24,
+                    borderRadius: 30,
+                    paddingVertical: 20,
+                    paddingHorizontal: 22,
+                    borderWidth: 1.5,
+                    borderColor: 'rgba(234, 88, 12, 0.5)',
                     shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 10 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 20,
-                    elevation: 10,
+                    shadowOffset: { width: 0, height: 16 },
+                    shadowOpacity: 0.5,
+                    shadowRadius: 24,
+                    elevation: 15,
                     overflow: 'hidden'
                 }}>
-                    <View style={{ position: 'absolute', top: -100, right: -100, width: 250, height: 250, backgroundColor: 'rgba(234, 88, 12, 0.1)', borderRadius: 9999 }} />
+                    <View style={{ position: 'absolute', top: -110, right: -110, width: 260, height: 260, backgroundColor: 'rgba(234, 88, 12, 0.18)', borderRadius: 9999 }} />
 
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <View>
-                            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Total Valuation</Text>
+                            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Total Valuation</Text>
                             <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                                <Text style={{ color: 'white', fontSize: 26, fontWeight: '900' }}>₹{total.toLocaleString()}</Text>
-                                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '600', marginLeft: 6 }}>TTC</Text>
+                                <Text style={{ color: 'white', fontSize: 22, fontWeight: '900' }}>₹{total.toLocaleString()}</Text>
+                                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>TTC</Text>
                             </View>
                         </View>
                         {kycStatus === 'APPROVED' ? (
@@ -284,50 +301,105 @@ export default function Cart() {
                                 onPress={() => router.push('/checkout')}
                                 style={{
                                     backgroundColor: 'white',
-                                    paddingHorizontal: 24,
-                                    height: 52,
-                                    borderRadius: 14,
+                                    paddingHorizontal: 20,
+                                    height: 46,
+                                    borderRadius: 12,
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    minWidth: 120
+                                    minWidth: 110
                                 }}
                             >
-                                <Text style={{ color: '#111827', fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.5, fontSize: 13 }}>Checkout</Text>
+                                <Text style={{ color: '#111827', fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2, fontSize: 12 }}>Checkout</Text>
                             </TouchableOpacity>
                         ) : (
-                            <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 16, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}>
-                                <Ionicons name="lock-closed" size={18} color="rgba(255,255,255,0.5)" />
+                            <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 16, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+                                <Ionicons name="lock-closed" size={16} color="rgba(255,255,255,0.5)" />
                             </View>
                         )}
                     </View>
 
+                    {/* KYC Restriction - Made more compact */}
                     {kycStatus !== 'APPROVED' && (
-                        <View className="mb-4">
+                        <View className="mb-3">
                             <KycRestriction
-                                title="KYC Verification Required"
-                                message="Full verification is mandatory for all high-value jewellery transactions."
-                                buttonTitle="Verify & Unlock Checkout"
+                                title="KYC Required"
+                                message="Mandatory for high-value transactions."
+                                buttonTitle="Verify Now"
                             />
                         </View>
                     )}
+
                     <View style={{
                         flexDirection: 'row',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         borderTopWidth: 1,
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        paddingTop: 16
+                        borderColor: 'rgba(255,255,255,0.08)',
+                        paddingTop: 12
                     }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Ionicons name="shield-checkmark" size={16} color="#10b981" />
-                            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginLeft: 8 }}>Insured & Hallmarked</Text>
+                            <Ionicons name="shield-checkmark" size={14} color="#10b981" />
+                            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginLeft: 6 }}>Insured & Hallmarked</Text>
                         </View>
-                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '600' }}>Secure Checkout</Text>
+                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9, fontWeight: '600' }}>Secure Checkout</Text>
                     </View>
                 </View>
             )}
 
             <BottomNav activeTab="cart" />
+
+            {/* Premium Confirmation Modal */}
+            <Modal
+                visible={showConfirmModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowConfirmModal(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+                    <TouchableOpacity
+                        activeOpacity={1}
+                        style={{ flex: 1 }}
+                        onPress={() => setShowConfirmModal(false)}
+                    />
+                    <View style={{
+                        backgroundColor: 'white',
+                        borderTopLeftRadius: 32,
+                        borderTopRightRadius: 32,
+                        padding: 24,
+                        paddingBottom: insets.bottom + 24,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: -10 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 20,
+                        elevation: 20
+                    }}>
+                        <View style={{ width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 24 }} />
+
+                        <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                                <Ionicons name="trash-outline" size={32} color="#EF4444" />
+                            </View>
+                            <Text style={{ fontSize: 20, fontWeight: '900', color: '#111827', marginBottom: 8, textAlign: 'center' }}>Remove from Vault?</Text>
+                            <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20 }}>Are you sure you want to remove this exquisite piece from your curated collection?</Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity
+                                onPress={() => setShowConfirmModal(false)}
+                                style={{ flex: 1, height: 56, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                <Text style={{ color: '#4B5563', fontWeight: '800', fontSize: 14, textTransform: 'uppercase', letterSpacing: 1 }}>Keep Piece</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={confirmRemove}
+                                style={{ flex: 1, height: 56, borderRadius: 16, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 }}
+                            >
+                                <Text style={{ color: 'white', fontWeight: '800', fontSize: 14, textTransform: 'uppercase', letterSpacing: 1 }}>Remove</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

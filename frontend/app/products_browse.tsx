@@ -317,7 +317,7 @@ export default function ProductsBrowse() {
                         renderItem={renderProduct}
                         keyExtractor={(item) => item._id}
                         numColumns={2}
-                        contentContainerStyle={{ paddingHorizontal: GRID_PADDING - CARD_MARGIN, paddingBottom: 110 }}
+                        contentContainerStyle={{ paddingHorizontal: GRID_PADDING - CARD_MARGIN, paddingBottom: 140 }}
                         showsVerticalScrollIndicator={false}
                         refreshControl={
                             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#f97316']} />

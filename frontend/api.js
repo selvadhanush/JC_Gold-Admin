@@ -8,7 +8,7 @@ import { Platform } from 'react-native';
 
 const getBaseUrl = () => {
     // For Web, always use localhost
-    if (Platform.OS === 'web') return 'http://10.105.228.96:5000';
+    if (Platform.OS === 'web') return 'https://jc-gold-admin.onrender.com';
 
     // For Physical Devices (Android/iOS) running via Expo Go
     const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.debuggerHost;
@@ -21,10 +21,10 @@ const getBaseUrl = () => {
     if (Platform.OS === 'android') return 'http://10.0.2.2:5000';
 
     // Fallback for iOS Simulator
-    return 'http://10.105.228.96:5000';
+    return 'https://jc-gold-admin.onrender.com';
 };
 
-export const BASE_URL = 'http://10.105.228.96:5000'; // Local development IP
+export const BASE_URL = 'http://10.105.228.96:5000'; // Local Network Backend Connection
 
 import * as SecureStore from 'expo-secure-store';
 
@@ -118,9 +118,9 @@ export const API_ENDPOINTS = {
     // Digital Gold - Buyer
     BUYER_DIGITAL_GOLD_BUY: `${BASE_URL}/api/v1/buyer/digital-gold/buy`,
     BUYER_DIGITAL_GOLD_WALLET: `${BASE_URL}/api/v1/buyer/digital-gold/wallet`,
-    BUYER_DIGITAL_GOLD_REDEEM: `${BASE_URL}/api/v1/buyer/digital-gold/redeem`,
     BUYER_DIGITAL_GOLD_TRANSACTIONS: `${BASE_URL}/api/v1/buyer/digital-gold/transactions`,
-    BUYER_DIGITAL_GOLD_REDEMPTIONS: `${BASE_URL}/api/v1/buyer/digital-gold/redemptions`,
+    BUYER_PHYSICAL_GOLD_REDEEM: `${BASE_URL}/api/v1/buyer/digital-gold/redeem`,
+    BUYER_PHYSICAL_GOLD_REDEMPTIONS: `${BASE_URL}/api/v1/buyer/digital-gold/redemptions`,
 
     // Digital Gold - Admin
     ADMIN_GOLD_RATE: `${BASE_URL}/api/v1/admin/digital-gold/gold-rate`,

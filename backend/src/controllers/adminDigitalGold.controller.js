@@ -3,6 +3,8 @@ const DigitalGoldTransaction = require('../models/DigitalGoldTransaction');
 const RedemptionRequest = require('../models/RedemptionRequest');
 const User = require('../models/User');
 const GoldLot = require('../models/GoldLot');
+const Payment = require('../models/Payment');
+const Refund = require('../models/Refund');
 const ErrorResponse = require('../utils/errorResponse');
 const { notifyRecipient } = require('../utils/notification');
 const mongoose = require('mongoose');
@@ -131,6 +133,25 @@ exports.approveTransaction = async (req, res, next) => {
 
             // Note: We no longer manually update user.wallet.goldBalance here.
             // The getWalletBalance API will auto-sync it from active lots.
+        }
+
+        if (status === 'REJECTED' && transaction.type === 'BUY') {
+            // Find the associated payment
+            const payment = await Payment.findOne({ transactionId: transaction.transactionId }).session(session);
+            if (payment) {
+                payment.status = 'REFUNDED';
+                await payment.save({ session });
+
+                // Create a record in Refund history
+                await Refund.create([{
+                    payment: payment._id,
+                    digitalGoldTransaction: transaction._id,
+                    amount: transaction.amountPaid,
+                    reason: rejectionReason || 'Admin Rejection',
+                    processedBy: req.admin._id,
+                    status: 'PROCESSED' // In a real system, this would be PENDING until Razorpay confirms
+                }], { session });
+            }
         }
 
         await transaction.save({ session });

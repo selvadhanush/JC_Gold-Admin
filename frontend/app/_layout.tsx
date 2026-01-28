@@ -292,8 +292,8 @@ export default function RootLayout() {
                         <Stack.Screen name="digital_gold" options={{ headerShown: false }} />
                         <Stack.Screen name="schemes" options={{ headerShown: false }} />
                         <Stack.Screen name="kyc_verification" options={{ headerShown: false }} />
-                        <Stack.Screen name="redeem_gold" options={{ headerShown: false }} />
-                        <Stack.Screen name="redemption_status" options={{ headerShown: false }} />
+                        <Stack.Screen name="transactions_history" options={{ headerShown: false }} />
+                        <Stack.Screen name="redeem_physical_gold" options={{ headerShown: false }} />
                     </Stack>
                     <Toast config={toastConfig} />
 

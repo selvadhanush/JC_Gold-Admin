@@ -11,7 +11,7 @@ import {
     Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../api';
 import { showToast } from '../utils/toast';
@@ -49,6 +49,12 @@ export default function Checkout() {
 
     const isDirectBuy = !!productId;
 
+    useFocusEffect(
+        useCallback(() => {
+            fetchAddresses();
+        }, [])
+    );
+
     useEffect(() => {
         if (buyQuantity) {
             setDirectQuantity(Number(buyQuantity));
@@ -78,9 +84,12 @@ export default function Checkout() {
             const data = await response.json();
             if (data.success) {
                 setAddresses(data.data);
-                const defaultAddr = data.data.find((a: any) => a.isDefault);
-                if (defaultAddr) setSelectedAddress(defaultAddr._id);
-                else if (data.data.length > 0) setSelectedAddress(data.data[0]._id);
+                // Only set a default if we don't already have a valid selection
+                if (!selectedAddress || !data.data.find((a: any) => a._id === selectedAddress)) {
+                    const defaultAddr = data.data.find((a: any) => a.isDefault);
+                    if (defaultAddr) setSelectedAddress(defaultAddr._id);
+                    else if (data.data.length > 0) setSelectedAddress(data.data[0]._id);
+                }
             }
         } catch (error) {
             console.error('Fetch Addresses Error:', error);
@@ -295,17 +304,36 @@ export default function Checkout() {
                         </TouchableOpacity>
                     )}
 
-                    {/* Simple Address List Toggle */}
+                    {/* Address List Toggle */}
                     {showAddressList && (
-                        <View className="mt-4 space-y-3">
+                        <View style={{ marginTop: 16 }}>
                             {addresses.map((addr) => (
                                 <TouchableOpacity
                                     key={addr._id}
-                                    onPress={() => { setSelectedAddress(addr._id); setShowAddressList(false); }}
-                                    className={`p-4 rounded-2xl border ${selectedAddress === addr._id ? 'bg-orange-50 border-orange-500' : 'bg-white border-gray-100'}`}
+                                    onPress={() => {
+                                        setSelectedAddress(addr._id);
+                                        setShowAddressList(false);
+                                    }}
+                                    activeOpacity={0.7}
+                                    style={{
+                                        padding: 16,
+                                        borderRadius: 20,
+                                        borderWidth: 1.5,
+                                        borderColor: selectedAddress === addr._id ? '#f97316' : '#f3f4f6',
+                                        backgroundColor: selectedAddress === addr._id ? '#fff7ed' : 'white',
+                                        marginBottom: 12
+                                    }}
                                 >
-                                    <Text className="font-bold text-gray-900">{addr.fullName}</Text>
-                                    <Text className="text-gray-500 text-xs">{addr.city}, {addr.pincode}</Text>
+                                    <View className="flex-row justify-between items-center">
+                                        <View className="flex-1">
+                                            <Text className="font-bold text-gray-900">{addr.fullName}</Text>
+                                            <Text className="text-gray-500 text-xs mt-1">{addr.addressLine1}</Text>
+                                            <Text className="text-gray-400 text-[10px] mt-0.5">{addr.city}, {addr.pincode}</Text>
+                                        </View>
+                                        {selectedAddress === addr._id && (
+                                            <Ionicons name="checkmark-circle" size={20} color="#f97316" />
+                                        )}
+                                    </View>
                                 </TouchableOpacity>
                             ))}
                             <TouchableOpacity

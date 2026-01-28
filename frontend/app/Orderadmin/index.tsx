@@ -375,19 +375,19 @@ export default function OrderAdminDashboard() {
                                 </View>
                             </TouchableOpacity>
 
-                            {/* Digital Gold Delivery */}
+                            {/* Physical Gold Deliveries */}
                             <TouchableOpacity
-                                onPress={() => router.push('/Orderadmin/digital_gold')}
-                                className="bg-white border-2 border-blue-100 rounded-[32px] p-6 mb-4 shadow-sm w-full flex-row items-center"
+                                onPress={() => router.push('/Orderadmin/physical_gold_delivery')}
+                                className="bg-white border-2 border-amber-100 rounded-[32px] p-6 mb-4 shadow-sm w-full flex-row items-center"
                             >
-                                <View className="bg-blue-600 w-14 h-14 rounded-2xl items-center justify-center shadow-lg">
-                                    <Ionicons name="gift" size={28} color="white" />
+                                <View className="bg-amber-600 w-14 h-14 rounded-2xl items-center justify-center shadow-lg">
+                                    <Ionicons name="cube" size={28} color="white" />
                                 </View>
                                 <View className="ml-5 flex-1">
-                                    <Text className="text-black font-black text-lg">Gold Deliveries</Text>
-                                    <Text className="text-gray-500 text-xs font-medium">Physical gold redemption requests</Text>
+                                    <Text className="text-black font-black text-lg">Physical Gold Deliveries</Text>
+                                    <Text className="text-gray-500 text-xs font-medium">Manage gold redemption requests</Text>
                                 </View>
-                                <Ionicons name="arrow-forward-circle" size={32} color="#2563eb" />
+                                <Ionicons name="arrow-forward-circle" size={32} color="#d97706" />
                             </TouchableOpacity>
                         </View>
                     </View>

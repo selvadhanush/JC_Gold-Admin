@@ -231,7 +231,7 @@ export default function Profile() {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
                 {/* Profile Header */}
                 <View style={{ alignItems: 'center', paddingVertical: 32 }}>
                     <TouchableOpacity onPress={handleUpdateProfileImage} style={{ position: 'relative', marginBottom: 16 }}>

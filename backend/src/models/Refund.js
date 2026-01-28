@@ -9,7 +9,10 @@ const refundSchema = new mongoose.Schema({
     order: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Order',
-        required: true,
+    },
+    digitalGoldTransaction: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'DigitalGoldTransaction',
     },
     amount: {
         type: Number,
