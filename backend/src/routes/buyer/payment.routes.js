@@ -9,13 +9,13 @@ const {
 const { protectBuyer } = require('../../middlewares/buyerAuth.middleware');
 const { requireMpinVerified } = require('../../middlewares/requireMpinVerified.middleware');
 const validate = require('../../middlewares/validate.middleware');
-const { createPaymentSchema } = require('../../validations/buyer/payment.validation');
 
 // All routes require buyer authentication and MPIN verification
 router.use(protectBuyer);
 router.use(requireMpinVerified);
 
-router.post('/', validate(createPaymentSchema), createPayment);
+router.post('/razorpay-order', createRazorpayOrder);
+router.post('/verify', verifyPayment);
 router.get('/', getPayments);
 router.get('/:id', getPaymentById);
 

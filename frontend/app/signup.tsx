@@ -57,7 +57,7 @@ export default function Signup() {
                 await SecureStore.setItemAsync('userData', JSON.stringify(data.data.user));
                 await SecureStore.setItemAsync('userType', 'buyer');
 
-                router.replace('/buyer_dashboard');
+                router.replace('/mpin_setup');
             } else {
                 setError(data.message || 'Registration failed');
             }

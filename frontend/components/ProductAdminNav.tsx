@@ -1,15 +1,17 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 interface ProductAdminNavProps {
     activeTab: 'dashboard' | 'categories' | 'products' | 'inventory';
+    navigation?: BottomTabBarProps['navigation'];
 }
 
-export default function ProductAdminNav({ activeTab }: ProductAdminNavProps) {
-    const router = useRouter();
+export default function ProductAdminNav({ activeTab, navigation }: ProductAdminNavProps) {
+    // Navigation is passed from parent
+
 
     const tabs = [
         { id: 'dashboard', label: 'Home', icon: 'home-outline', activeIcon: 'home', route: '/Productadmin' },
@@ -19,18 +21,31 @@ export default function ProductAdminNav({ activeTab }: ProductAdminNavProps) {
     ];
 
     return (
-        <View className="absolute bottom-6 left-6 right-6 z-[100]">
+        <View style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 100,
+            backgroundColor: 'transparent',
+        }}>
             <BlurView
-                intensity={80}
+                intensity={Platform.OS === 'ios' ? 90 : 100}
                 tint="light"
-                className="flex-row justify-around items-center h-20 rounded-[32px] border border-white px-2 shadow-2xl overflow-hidden"
                 style={{
-                    backgroundColor: Platform.OS === 'android' ? 'rgba(255,255,255,0.95)' : 'transparent',
-                    elevation: 10,
+                    flexDirection: 'row',
+                    justifyContent: 'space-around',
+                    alignItems: 'center',
+                    height: Platform.OS === 'ios' ? 85 : 70,
+                    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+                    borderTopWidth: 1,
+                    borderTopColor: 'rgba(234, 88, 12, 0.1)',
+                    backgroundColor: Platform.OS === 'android' ? '#ffffff' : 'rgba(255, 255, 255, 0.85)',
+                    elevation: 20,
                     shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 10 },
+                    shadowOffset: { width: 0, height: -8 },
                     shadowOpacity: 0.1,
-                    shadowRadius: 20,
+                    shadowRadius: 15,
                 }}
             >
                 {tabs.map((tab) => {
@@ -38,24 +53,62 @@ export default function ProductAdminNav({ activeTab }: ProductAdminNavProps) {
                     return (
                         <TouchableOpacity
                             key={tab.id}
-                            onPress={() => router.replace(tab.route as any)}
-                            className="items-center justify-center flex-1 h-full"
+                            onPress={() => {
+                                const screenName = tab.id === 'dashboard' ? 'index' : tab.id;
+                                if (navigation) {
+                                    navigation.navigate(screenName);
+                                }
+                            }}
+                            style={{
+                                flex: 1,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '100%',
+                            }}
                             activeOpacity={0.7}
                         >
-                            <View className={`items-center justify-center ${isActive ? '' : 'opacity-40'}`}>
-                                <Ionicons
-                                    name={(isActive ? tab.activeIcon : tab.icon) as any}
-                                    size={24}
-                                    color={isActive ? '#ea580c' : '#000'}
-                                />
-                                <Text
-                                    className={`text-[10px] font-black uppercase tracking-tighter mt-1.5 ${isActive ? 'text-orange-600' : 'text-gray-400'
-                                        }`}
-                                >
-                                    {tab.label}
-                                </Text>
+                            <View style={{
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: isActive ? 1 : 0.5,
+                            }}>
+                                <View style={{
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    paddingVertical: 4,
+                                    paddingHorizontal: 12,
+                                    borderRadius: 16,
+                                    backgroundColor: isActive ? 'rgba(234, 88, 12, 0.08)' : 'transparent',
+                                }}>
+                                    <Ionicons
+                                        name={(isActive ? tab.activeIcon : tab.icon) as any}
+                                        size={22}
+                                        color={isActive ? '#ea580c' : '#4b5563'}
+                                    />
+                                    <Text
+                                        numberOfLines={1}
+                                        adjustsFontSizeToFit
+                                        style={{
+                                            fontSize: 10,
+                                            fontWeight: '800',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: -0.2,
+                                            marginTop: 3,
+                                            color: isActive ? '#ea580c' : '#6b7280',
+                                        }}
+                                    >
+                                        {tab.label}
+                                    </Text>
+                                </View>
                                 {isActive && (
-                                    <View className="absolute -bottom-3 w-1.5 h-1.5 rounded-full bg-orange-600" />
+                                    <View style={{
+                                        position: 'absolute',
+                                        bottom: -10,
+                                        width: 4,
+                                        height: 4,
+                                        borderRadius: 2,
+                                        backgroundColor: '#ea580c',
+                                    }} />
                                 )}
                             </View>
                         </TouchableOpacity>

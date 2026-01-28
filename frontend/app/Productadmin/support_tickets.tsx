@@ -134,7 +134,6 @@ export default function ProductSupportTickets() {
 
     return (
         <SafeAreaView className="flex-1 bg-gray-50" edges={['top']}>
-            <Stack.Screen options={{ headerShown: false }} />
 
             <View className="bg-white px-6 py-4 flex-row items-center border-b border-gray-100">
                 <TouchableOpacity

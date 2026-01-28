@@ -8,13 +8,14 @@ import {
     RefreshControl,
     Image,
     Dimensions,
+    Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../api';
 import BottomNav from '../components/BottomNav';
-import Skeleton from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
 
 const { width } = Dimensions.get('window');
 
@@ -37,11 +38,15 @@ interface Order {
     createdAt: string;
 }
 
+type FilterStatus = 'ALL' | 'PENDING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+
 export default function Orders() {
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [showFilterModal, setShowFilterModal] = useState(false);
+    const [selectedFilter, setSelectedFilter] = useState<FilterStatus>('ALL');
 
     useEffect(() => {
         fetchOrders();
@@ -76,6 +81,25 @@ export default function Orders() {
         return new Date(dateString).toLocaleDateString('en-IN', {
             day: 'numeric', month: 'short', year: 'numeric'
         });
+    };
+
+    // Filter orders based on selected filter
+    const filteredOrders = orders.filter(order => {
+        if (selectedFilter === 'ALL') return true;
+        return order.orderStatus?.toUpperCase() === selectedFilter;
+    });
+
+    const filterOptions: { label: string; value: FilterStatus; icon: string; color: string }[] = [
+        { label: 'All Orders', value: 'ALL', icon: 'list', color: '#6b7280' },
+        { label: 'Pending', value: 'PENDING', icon: 'time', color: '#f97316' },
+        { label: 'Shipped', value: 'SHIPPED', icon: 'airplane', color: '#3b82f6' },
+        { label: 'Delivered', value: 'DELIVERED', icon: 'checkmark-circle', color: '#10b981' },
+        { label: 'Cancelled', value: 'CANCELLED', icon: 'close-circle', color: '#ef4444' },
+    ];
+
+    const applyFilter = (filter: FilterStatus) => {
+        setSelectedFilter(filter);
+        setShowFilterModal(false);
     };
 
     const renderOrderCard = ({ item }: { item: Order }) => {
@@ -176,16 +200,25 @@ export default function Orders() {
                     <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[4px] mb-2">Shopping History</Text>
                     <Text className="text-3xl font-black text-gray-900">Your Portfolio</Text>
                 </View>
-                <View className="w-12 h-12 bg-gray-50 rounded-2xl items-center justify-center border border-gray-100">
+                <TouchableOpacity
+                    onPress={() => setShowFilterModal(true)}
+                    className="w-12 h-12 bg-gray-50 rounded-2xl items-center justify-center border border-gray-100"
+                >
                     <Ionicons name="filter-outline" size={20} color="#111827" />
-                </View>
+                    {selectedFilter !== 'ALL' && (
+                        <View className="absolute -top-1 -right-1 w-5 h-5 bg-primary-600 rounded-full items-center justify-center border-2 border-white">
+                            <Text className="text-white text-[8px] font-black">1</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
             </View>
 
             {loading && !refreshing ? (
                 renderSkeleton()
             ) : (
                 <FlatList
-                    data={orders}
+                    data={filteredOrders}
+
                     renderItem={renderOrderCard}
                     keyExtractor={(item) => item._id}
                     contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
@@ -212,6 +245,89 @@ export default function Orders() {
             )}
 
             <BottomNav activeTab="orders" />
+
+            {/* Filter Modal */}
+            <Modal
+                visible={showFilterModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowFilterModal(false)}
+            >
+                <TouchableOpacity
+                    activeOpacity={1}
+                    onPress={() => setShowFilterModal(false)}
+                    className="flex-1 bg-black/50 justify-end"
+                >
+                    <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+                        <View className="bg-white rounded-t-[40px] px-6 pt-6 pb-10">
+                            {/* Header */}
+                            <View className="flex-row items-center justify-between mb-6">
+                                <View>
+                                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[3px] mb-1">Filter By</Text>
+                                    <Text className="text-2xl font-black text-gray-900">Order Status</Text>
+                                </View>
+                                <TouchableOpacity
+                                    onPress={() => setShowFilterModal(false)}
+                                    className="w-10 h-10 bg-gray-50 rounded-2xl items-center justify-center"
+                                >
+                                    <Ionicons name="close" size={24} color="#111827" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Filter Options */}
+                            <View className="mb-6">
+                                {filterOptions.map((option) => (
+                                    <TouchableOpacity
+                                        key={option.value}
+                                        onPress={() => applyFilter(option.value)}
+                                        className={`flex-row items-center justify-between p-4 rounded-2xl mb-3 border-2 ${selectedFilter === option.value
+                                            ? 'bg-primary-50 border-primary-600'
+                                            : 'bg-gray-50 border-transparent'
+                                            }`}
+                                    >
+                                        <View className="flex-row items-center flex-1">
+                                            <View
+                                                className="w-12 h-12 rounded-2xl items-center justify-center mr-4"
+                                                style={{ backgroundColor: selectedFilter === option.value ? option.color + '20' : '#f9fafb' }}
+                                            >
+                                                <Ionicons name={option.icon as any} size={24} color={option.color} />
+                                            </View>
+                                            <Text className={`text-base font-black ${selectedFilter === option.value ? 'text-primary-600' : 'text-gray-900'
+                                                }`}>
+                                                {option.label}
+                                            </Text>
+                                        </View>
+                                        {selectedFilter === option.value && (
+                                            <View className="w-6 h-6 bg-primary-600 rounded-full items-center justify-center">
+                                                <Ionicons name="checkmark" size={16} color="white" />
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Action Buttons */}
+                            <View className="flex-row gap-x-3">
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setSelectedFilter('ALL');
+                                        setShowFilterModal(false);
+                                    }}
+                                    className="flex-1 bg-gray-100 py-4 rounded-2xl items-center"
+                                >
+                                    <Text className="text-gray-700 font-black uppercase tracking-widest text-xs">Clear Filter</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => setShowFilterModal(false)}
+                                    className="flex-1 bg-primary-600 py-4 rounded-2xl items-center shadow-lg shadow-primary-200"
+                                >
+                                    <Text className="text-white font-black uppercase tracking-widest text-xs">Apply</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            </Modal>
         </SafeAreaView>
     );
 }

@@ -1,50 +1,67 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet, ViewStyle } from 'react-native';
+import { cssInterop } from 'nativewind';
 
 interface SkeletonProps {
     width?: number | string;
     height?: number | string;
-    variant?: 'box' | 'circle' | 'text';
+    borderRadius?: number;
     style?: ViewStyle;
     className?: string;
 }
 
-export default function Skeleton({ width, height, variant = 'box', style, className }: SkeletonProps) {
-    const opacity = useRef(new Animated.Value(0.3)).current;
+export const Skeleton: React.FC<SkeletonProps> = ({
+    width = '100%',
+    height = 20,
+    borderRadius = 8,
+    style,
+    className
+}) => {
+    const pulseAnim = useRef(new Animated.Value(0.3)).current;
 
     useEffect(() => {
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(opacity, {
-                    toValue: 0.7,
-                    duration: 800,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(opacity, {
-                    toValue: 0.3,
-                    duration: 800,
-                    useNativeDriver: true,
-                }),
-            ])
-        ).start();
-    }, [opacity]);
+        const pulse = Animated.sequence([
+            Animated.timing(pulseAnim, {
+                toValue: 0.7,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+            Animated.timing(pulseAnim, {
+                toValue: 0.3,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+        ]);
 
-    const borderRadius = variant === 'circle' ? (typeof height === 'number' ? height / 2 : 999) :
-        variant === 'text' ? 4 : 16;
+        Animated.loop(pulse).start();
+    }, [pulseAnim]);
 
     return (
         <Animated.View
             style={[
+                styles.skeleton,
                 {
                     width: width as any,
                     height: height as any,
-                    backgroundColor: '#E5E7EB',
                     borderRadius,
-                    opacity,
-                } as any,
+                    opacity: pulseAnim,
+                },
                 style,
             ]}
-            className={className}
         />
     );
-}
+};
+
+const styles = StyleSheet.create({
+    skeleton: {
+        backgroundColor: '#E1E9EE', // Light gray for the skeleton base
+    },
+});
+
+cssInterop(Skeleton, {
+    className: {
+        target: 'style',
+    },
+});
+
+export default Skeleton;

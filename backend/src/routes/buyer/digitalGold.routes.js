@@ -3,7 +3,8 @@ const {
     buyDigitalGold,
     requestRedemption,
     getWalletBalance,
-    getTransactions
+    getTransactions,
+    getRedemptionRequests
 } = require('../../controllers/buyer/digitalGold.controller');
 const {
     getLots,
@@ -24,6 +25,7 @@ router.post('/buy', buyDigitalGold);
 router.post('/redeem', requireKycApproval, requestRedemption);
 router.get('/wallet', getWalletBalance);
 router.get('/transactions', getTransactions);
+router.get('/redemptions', getRedemptionRequests);
 
 // LOT-BASED endpoints
 router.get('/lots', getLots);

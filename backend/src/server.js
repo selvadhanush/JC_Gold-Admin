@@ -3,10 +3,13 @@ const connectDB = require('./config/db');
 const { PORT } = require('./config/env');
 
 const seedSuperAdmin = require('./utils/seeder');
+const { startMaintenanceScheduler } = require('./utils/maintenanceScheduler');
 
 // Connect to database
 connectDB().then(() => {
     seedSuperAdmin();
+    // Start maintenance scheduler
+    startMaintenanceScheduler();
 });
 
 const server = app.listen(PORT, () => {

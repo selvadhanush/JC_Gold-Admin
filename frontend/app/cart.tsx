@@ -14,8 +14,9 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../api';
 import BottomNav from '../components/BottomNav';
-import Skeleton from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
 import { showToast } from '../utils/toast';
+import KycRestriction from '../components/KycRestriction';
 
 const { width } = Dimensions.get('window');
 
@@ -38,12 +39,27 @@ interface CartItem {
 export default function Cart() {
     const router = useRouter();
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    const [kycStatus, setKycStatus] = useState<string>('NOT_SUBMITTED');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         fetchCart();
+        fetchKycStatus();
     }, []);
+
+    const fetchKycStatus = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.BUYER_KYC_STATUS, { headers });
+            const data = await response.json();
+            if (data.success) {
+                setKycStatus(data.data.status);
+            }
+        } catch (error) {
+            console.error('Error fetching KYC:', error);
+        }
+    };
 
     const fetchCart = async () => {
         try {
@@ -117,40 +133,67 @@ export default function Cart() {
         if (!item.product) return null;
 
         return (
-            <View className="bg-white rounded-[32px] mb-6 overflow-hidden border border-gray-100 shadow-sm p-4">
-                <View className="flex-row">
-                    <View className="w-24 h-24 bg-gray-50 rounded-[24px] overflow-hidden border border-gray-100">
+            <View style={{
+                backgroundColor: 'white',
+                borderRadius: 28,
+                marginBottom: 20,
+                overflow: 'hidden',
+                borderWidth: 1,
+                borderColor: '#F3F4F6',
+                padding: 16,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.08,
+                shadowRadius: 12,
+                elevation: 3
+            }}>
+                <View style={{ flexDirection: 'row' }}>
+                    <View style={{
+                        width: 100,
+                        height: 100,
+                        backgroundColor: '#F9FAFB',
+                        borderRadius: 20,
+                        overflow: 'hidden',
+                        borderWidth: 1,
+                        borderColor: '#F3F4F6'
+                    }}>
                         {item.product.images && item.product.images.length > 0 ? (
-                            <Image source={{ uri: item.product.images[0] }} className="w-full h-full" resizeMode="cover" />
+                            <Image source={{ uri: item.product.images[0] }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                         ) : (
-                            <View className="w-full h-full items-center justify-center">
+                            <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                                 <Ionicons name="image-outline" size={32} color="#d1d5db" />
                             </View>
                         )}
                     </View>
-                    <View className="flex-1 ml-4 justify-between">
+                    <View style={{ flex: 1, marginLeft: 16, justifyContent: 'space-between' }}>
                         <View>
-                            <View className="flex-row justify-between items-start">
-                                <Text className="text-gray-900 font-bold text-sm flex-1 mr-2" numberOfLines={2}>{item.product.name}</Text>
-                                <TouchableOpacity onPress={() => removeItem(item._id)}>
-                                    <Ionicons name="close-circle-outline" size={24} color="#ef4444" />
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Text style={{ color: '#111827', fontWeight: '800', fontSize: 15, flex: 1, marginRight: 8, lineHeight: 20 }} numberOfLines={2}>{item.product.name}</Text>
+                                <TouchableOpacity onPress={() => removeItem(item._id)} style={{ padding: 4 }}>
+                                    <Ionicons name="close-circle" size={22} color="#FCA5A5" />
                                 </TouchableOpacity>
                             </View>
-                            <Text className="text-gray-400 text-[10px] uppercase font-black tracking-widest mt-1">
+                            <Text style={{ color: '#6B7280', fontSize: 11, textTransform: 'uppercase', fontWeight: '700', letterSpacing: 0.5, marginTop: 4 }}>
                                 {item.product.specifications?.metalType || 'JEWELRY'} • {item.product.specifications?.weight || 0}g
                             </Text>
                         </View>
-                        <View className="flex-row justify-between items-end">
-                            <View className="flex-row items-center bg-gray-50 rounded-2xl px-1 py-1 border border-gray-100">
-                                <TouchableOpacity onPress={() => updateQuantity(item._id, item.quantity - 1)} className="w-8 h-8 items-center justify-center">
-                                    <Ionicons name="remove" size={16} color="#111827" />
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 12, padding: 2 }}>
+                                <TouchableOpacity
+                                    onPress={() => updateQuantity(item._id, item.quantity - 1)}
+                                    style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: 'white', borderRadius: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 }}
+                                >
+                                    <Ionicons name="remove" size={14} color="#111827" />
                                 </TouchableOpacity>
-                                <Text className="mx-3 font-black text-gray-900">{item.quantity}</Text>
-                                <TouchableOpacity onPress={() => updateQuantity(item._id, item.quantity + 1)} className="w-8 h-8 items-center justify-center">
-                                    <Ionicons name="add" size={16} color="#111827" />
+                                <Text style={{ marginHorizontal: 14, fontWeight: '800', color: '#111827', fontSize: 14 }}>{item.quantity}</Text>
+                                <TouchableOpacity
+                                    onPress={() => updateQuantity(item._id, item.quantity + 1)}
+                                    style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: 'white', borderRadius: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 }}
+                                >
+                                    <Ionicons name="add" size={14} color="#111827" />
                                 </TouchableOpacity>
                             </View>
-                            <Text className="text-primary-600 font-black text-lg">₹{(item.product.price * item.quantity).toLocaleString()}</Text>
+                            <Text style={{ color: '#ea580c', fontWeight: '900', fontSize: 18 }}>₹{(item.product.price * item.quantity).toLocaleString()}</Text>
                         </View>
                     </View>
                 </View>
@@ -159,14 +202,14 @@ export default function Cart() {
     };
 
     const renderSkeleton = () => (
-        <View className="px-6 py-6">
+        <View style={{ padding: 24 }}>
             {[1, 2, 3].map(i => (
-                <View key={i} className="bg-white rounded-[32px] mb-6 border border-gray-100 p-4 flex-row">
+                <View key={i} style={{ backgroundColor: 'white', borderRadius: 32, marginBottom: 24, borderWidth: 1, borderColor: '#F3F4F6', padding: 16, flexDirection: 'row' }}>
                     <Skeleton width={96} height={96} style={{ borderRadius: 24 }} />
-                    <View className="flex-1 ml-4">
-                        <Skeleton width="90%" height={16} className="mb-2" />
-                        <Skeleton width="40%" height={10} className="mb-4" />
-                        <View className="flex-row justify-between items-center">
+                    <View style={{ flex: 1, marginLeft: 16 }}>
+                        <Skeleton width="90%" height={16} style={{ marginBottom: 8 }} />
+                        <Skeleton width="40%" height={10} style={{ marginBottom: 16 }} />
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Skeleton width={80} height={32} style={{ borderRadius: 16 }} />
                             <Skeleton width={100} height={24} />
                         </View>
@@ -177,16 +220,16 @@ export default function Cart() {
     );
 
     return (
-        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }} edges={['top']}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-50">
+            <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <View>
-                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[4px] mb-1">Your Selection</Text>
-                    <Text className="text-2xl font-black text-gray-900">Curated Vault</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: '#ea580c', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 }}>Your Selection</Text>
+                    <Text style={{ fontSize: 28, fontWeight: '900', color: '#111827' }}>Curated Vault</Text>
                 </View>
-                <TouchableOpacity onPress={() => router.push('/products_browse')} className="w-12 h-12 bg-gray-50 rounded-2xl items-center justify-center border border-gray-100">
-                    <Ionicons name="add-outline" size={24} color="#111827" />
+                <TouchableOpacity onPress={() => router.push('/products_browse')} style={{ width: 44, height: 44, backgroundColor: '#fff7ed', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#ffedd5' }}>
+                    <Ionicons name="add" size={24} color="#ea580c" />
                 </TouchableOpacity>
             </View>
 
@@ -201,36 +244,85 @@ export default function Cart() {
                     showsVerticalScrollIndicator={false}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchCart()} colors={['#f97316']} />}
                     ListEmptyComponent={
-                        <View className="items-center justify-center py-20 px-10">
+                        <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 40 }}>
                             <Ionicons name="cart-outline" size={80} color="#d1d5db" />
-                            <Text className="text-gray-900 text-xl font-black mt-6">Vault is Empty</Text>
-                            <Text className="text-gray-400 text-center mt-2">Start adding exquisite pieces to your collection.</Text>
+                            <Text style={{ color: '#111827', fontSize: 20, fontWeight: '900', marginTop: 24 }}>Vault is Empty</Text>
+                            <Text style={{ color: '#9CA3AF', textAlign: 'center', marginTop: 8 }}>Start adding exquisite pieces to your collection.</Text>
                         </View>
                     }
                 />
             )}
 
             {cartItems.length > 0 && !loading && (
-                <View className="absolute bottom-28 left-6 right-6 bg-gray-900/60 backdrop-blur-3xl rounded-[40px] p-8 shadow-2xl border border-white/10 overflow-hidden">
-                    <View className="absolute -top-20 -right-20 w-40 h-40 bg-white/5 rounded-full" />
-                    <View className="flex-row justify-between items-center mb-6">
+                <View style={{
+                    position: 'absolute',
+                    bottom: 100,
+                    left: 20,
+                    right: 20,
+                    backgroundColor: '#111827',
+                    borderRadius: 32,
+                    padding: 24,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 10 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 20,
+                    elevation: 10,
+                    overflow: 'hidden'
+                }}>
+                    <View style={{ position: 'absolute', top: -100, right: -100, width: 250, height: 250, backgroundColor: 'rgba(234, 88, 12, 0.1)', borderRadius: 9999 }} />
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                         <View>
-                            <Text className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-1">Total Valuation</Text>
-                            <View className="flex-row items-end">
-                                <Text className="text-white text-2xl font-black">₹{total.toLocaleString()}</Text>
-                                <Text className="text-white/40 text-[9px] font-bold ml-2 mb-1">TTC</Text>
+                            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Total Valuation</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                                <Text style={{ color: 'white', fontSize: 26, fontWeight: '900' }}>₹{total.toLocaleString()}</Text>
+                                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '600', marginLeft: 6 }}>TTC</Text>
                             </View>
                         </View>
-                        <TouchableOpacity
-                            onPress={() => router.push('/checkout')}
-                            className="bg-white px-8 h-14 rounded-2xl items-center justify-center shadow-lg"
-                        >
-                            <Text className="text-gray-900 font-black uppercase tracking-widest text-xs">Checkout</Text>
-                        </TouchableOpacity>
+                        {kycStatus === 'APPROVED' ? (
+                            <TouchableOpacity
+                                onPress={() => router.push('/checkout')}
+                                style={{
+                                    backgroundColor: 'white',
+                                    paddingHorizontal: 24,
+                                    height: 52,
+                                    borderRadius: 14,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    minWidth: 120
+                                }}
+                            >
+                                <Text style={{ color: '#111827', fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.5, fontSize: 13 }}>Checkout</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 16, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}>
+                                <Ionicons name="lock-closed" size={18} color="rgba(255,255,255,0.5)" />
+                            </View>
+                        )}
                     </View>
-                    <View className="flex-row justify-between border-t border-white/10 pt-4">
-                        <Text className="text-white/40 text-[9px] font-bold uppercase tracking-tighter">Insured & Hallmarked</Text>
-                        <Ionicons name="shield-checkmark" size={14} color="#10b981" />
+
+                    {kycStatus !== 'APPROVED' && (
+                        <View className="mb-4">
+                            <KycRestriction
+                                title="KYC Verification Required"
+                                message="Full verification is mandatory for all high-value jewellery transactions."
+                                buttonTitle="Verify & Unlock Checkout"
+                            />
+                        </View>
+                    )}
+                    <View style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        borderTopWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        paddingTop: 16
+                    }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="shield-checkmark" size={16} color="#10b981" />
+                            <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginLeft: 8 }}>Insured & Hallmarked</Text>
+                        </View>
+                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '600' }}>Secure Checkout</Text>
                     </View>
                 </View>
             )}

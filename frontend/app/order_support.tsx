@@ -23,6 +23,10 @@ export default function OrderSupport() {
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
+    const handleCategorySelect = (cat: 'PRODUCT' | 'PAYMENT') => {
+        setCategory(cat);
+    };
+
     const handleSubmit = async () => {
         if (!category || !subject || !message) {
             Toast.show({
@@ -80,7 +84,7 @@ export default function OrderSupport() {
                 >
                     <Ionicons name="chevron-back" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text className="text-base font-black text-gray-900">Order Support</Text>
+                <Text className="text-base font-black text-gray-900">Support Inquiry</Text>
                 <View className="w-12" />
             </View>
 
@@ -91,48 +95,47 @@ export default function OrderSupport() {
                 <ScrollView showsVerticalScrollIndicator={false} className="px-6">
                     <View className="mt-8 mb-10">
                         <Text className="text-2xl font-black text-gray-900 mb-2">How can we help?</Text>
-                        <Text className="text-gray-500 font-medium">Select the area regarding which you need assistance.</Text>
+                        <Text className="text-gray-500 font-medium">Select a category and describe your issue.</Text>
                     </View>
 
                     {/* Category Selection */}
-                    <View className="flex-row justify-between mb-10">
+                    <View className="flex-row justify-between mb-2">
                         <TouchableOpacity
-                            onPress={() => setCategory('PRODUCT')}
-                            className={`w-[48%] p-6 rounded-[32px] border-2 items-center ${category === 'PRODUCT' ? 'bg-primary-50 border-primary-600' : 'bg-gray-50 border-gray-100'}`}
+                            onPress={() => handleCategorySelect('PRODUCT')}
+                            className={`w-[48%] py-6 rounded-[28px] border-2 items-center ${category === 'PRODUCT' ? 'bg-primary-50 border-primary-600' : 'bg-gray-50 border-gray-100'}`}
                         >
-                            <View className={`w-14 h-14 rounded-2xl items-center justify-center mb-4 ${category === 'PRODUCT' ? 'bg-primary-600' : 'bg-gray-200'}`}>
-                                <Ionicons name="cube-outline" size={28} color="white" />
+                            <View className={`w-12 h-12 rounded-2xl items-center justify-center mb-3 ${category === 'PRODUCT' ? 'bg-primary-600' : 'bg-gray-200'}`}>
+                                <Ionicons name="cube-outline" size={24} color="white" />
                             </View>
-                            <Text className={`font-black text-sm ${category === 'PRODUCT' ? 'text-primary-600' : 'text-gray-500'}`}>Product Details</Text>
-                            <Text className="text-[10px] text-gray-400 mt-1 uppercase font-bold text-center">Quality, Specs, Count</Text>
+                            <Text className={`font-black text-[10px] uppercase tracking-widest ${category === 'PRODUCT' ? 'text-primary-600' : 'text-gray-400'}`}>Product Issue</Text>
                         </TouchableOpacity>
-
                         <TouchableOpacity
-                            onPress={() => setCategory('PAYMENT')}
-                            className={`w-[48%] p-6 rounded-[32px] border-2 items-center ${category === 'PAYMENT' ? 'bg-amber-50 border-amber-600' : 'bg-gray-50 border-gray-100'}`}
+                            onPress={() => handleCategorySelect('PAYMENT')}
+                            className={`w-[48%] py-6 rounded-[28px] border-2 items-center ${category === 'PAYMENT' ? 'bg-orange-50 border-orange-500' : 'bg-gray-50 border-gray-100'}`}
                         >
-                            <View className={`w-14 h-14 rounded-2xl items-center justify-center mb-4 ${category === 'PAYMENT' ? 'bg-amber-600' : 'bg-gray-200'}`}>
-                                <Ionicons name="card-outline" size={28} color="white" />
+                            <View className={`w-12 h-12 rounded-2xl items-center justify-center mb-3 ${category === 'PAYMENT' ? 'bg-orange-500' : 'bg-gray-200'}`}>
+                                <Ionicons name="card-outline" size={24} color="white" />
                             </View>
-                            <Text className={`font-black text-sm ${category === 'PAYMENT' ? 'text-amber-600' : 'text-gray-500'}`}>Payment Details</Text>
-                            <Text className="text-[10px] text-gray-400 mt-1 uppercase font-bold text-center">Invoices, Refunds, Status</Text>
+                            <Text className={`font-black text-[10px] uppercase tracking-widest ${category === 'PAYMENT' ? 'text-orange-600' : 'text-gray-400'}`}>Payment Issue</Text>
                         </TouchableOpacity>
                     </View>
+
+                    <View className="h-6 mb-4" />
 
                     {category && (
                         <View className="space-y-6">
                             <View>
-                                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[4px] mb-4">Support Details</Text>
+                                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[4px] mb-4">Inquiry Details</Text>
                                 <View className="bg-gray-50 rounded-[28px] border border-gray-100 p-6">
                                     <TextInput
-                                        placeholder="Subject (e.g., Wrong weight, Payment stuck)"
+                                        placeholder="Subject"
                                         value={subject}
                                         onChangeText={setSubject}
                                         className="text-gray-900 font-bold mb-4 border-b border-gray-200 pb-2"
                                         placeholderTextColor="#9ca3af"
                                     />
                                     <TextInput
-                                        placeholder="Write your message here..."
+                                        placeholder="Describe your issue in detail..."
                                         value={message}
                                         onChangeText={setMessage}
                                         multiline
@@ -147,7 +150,9 @@ export default function OrderSupport() {
                             <TouchableOpacity
                                 onPress={handleSubmit}
                                 disabled={loading}
-                                className={`h-16 rounded-[28px] items-center justify-center shadow-xl ${category === 'PRODUCT' ? 'bg-primary-600 shadow-primary-500/30' : 'bg-amber-600 shadow-amber-500/30'}`}
+                                className={`h-16 rounded-[28px] items-center justify-center shadow-xl ${category === 'PRODUCT' ? 'bg-primary-600 shadow-primary-500/30' :
+                                    'bg-orange-500 shadow-orange-500/30'
+                                    }`}
                             >
                                 {loading ? (
                                     <ActivityIndicator color="white" />
@@ -157,6 +162,7 @@ export default function OrderSupport() {
                             </TouchableOpacity>
                         </View>
                     )}
+                    <View className="h-10" />
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>

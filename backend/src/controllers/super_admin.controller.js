@@ -171,20 +171,332 @@ exports.getFilteredAuditLogs = async (req, res) => {
     }
 };
 
+// @desc    Get reports statistics for Insights Hub
+// @route   GET /api/v1/super-admin/reports-stats
+// @access  Private/SuperAdmin
+exports.getReportsStats = async (req, res) => {
+    try {
+        const Scheme = require('../models/Scheme');
+        const UserScheme = require('../models/UserScheme');
+
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+        // Revenue Trends (Last 30 days with daily breakdown)
+        const recentOrders = await Order.find({
+            createdAt: { $gte: thirtyDaysAgo },
+            orderStatus: { $ne: 'CANCELLED' }
+        });
+
+        const previousOrders = await Order.find({
+            createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
+            orderStatus: { $ne: 'CANCELLED' }
+        });
+
+        const currentRevenue = recentOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+        const previousRevenue = previousOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+
+        // Calculate daily revenue for the last 30 days
+        const dailyRevenue = [];
+        for (let i = 29; i >= 0; i--) {
+            const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+            const dayStart = new Date(date.setHours(0, 0, 0, 0));
+            const dayEnd = new Date(date.setHours(23, 59, 59, 999));
+
+            const dayOrders = recentOrders.filter(order =>
+                order.createdAt >= dayStart && order.createdAt <= dayEnd
+            );
+
+            dailyRevenue.push({
+                date: dayStart.toISOString().split('T')[0],
+                revenue: dayOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0),
+                orders: dayOrders.length
+            });
+        }
+
+        // User Growth
+        const totalUsers = await User.countDocuments({});
+        const usersThisMonth = await User.countDocuments({
+            createdAt: { $gte: firstDayOfMonth }
+        });
+        const usersLastMonth = await User.countDocuments({
+            createdAt: { $gte: firstDayOfLastMonth, $lte: lastDayOfLastMonth }
+        });
+
+        const userGrowthRate = usersLastMonth > 0
+            ? ((usersThisMonth - usersLastMonth) / usersLastMonth * 100).toFixed(2)
+            : 100;
+
+        // Sales Growth
+        const salesGrowthRate = previousRevenue > 0
+            ? ((currentRevenue - previousRevenue) / previousRevenue * 100).toFixed(2)
+            : 100;
+
+        // Inventory Health
+        const totalInventory = await Inventory.countDocuments({});
+        const lowStockItems = await Inventory.countDocuments({ quantity: { $lte: 10 } });
+        const outOfStockItems = await Inventory.countDocuments({ quantity: 0 });
+
+        // Scheme Activity
+        const totalSchemes = await Scheme.countDocuments({});
+        const activeSchemes = await Scheme.countDocuments({ isActive: true });
+        const userSchemes = await UserScheme.find({});
+        const activeEnrollments = userSchemes.filter(us => us.status === 'ACTIVE').length;
+        const completedEnrollments = userSchemes.filter(us => us.status === 'COMPLETED').length;
+
+        // Month-to-Date Revenue
+        const mtdOrders = await Order.find({
+            createdAt: { $gte: firstDayOfMonth },
+            orderStatus: { $ne: 'CANCELLED' }
+        });
+        const mtdRevenue = mtdOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                revenue: {
+                    current30Days: currentRevenue,
+                    previous30Days: previousRevenue,
+                    growthRate: parseFloat(salesGrowthRate),
+                    mtdRevenue: mtdRevenue,
+                    dailyTrends: dailyRevenue
+                },
+                users: {
+                    total: totalUsers,
+                    thisMonth: usersThisMonth,
+                    lastMonth: usersLastMonth,
+                    growthRate: parseFloat(userGrowthRate),
+                    active: await User.countDocuments({ isActive: true }),
+                    blocked: await User.countDocuments({ isActive: false })
+                },
+                sales: {
+                    current30Days: recentOrders.length,
+                    previous30Days: previousOrders.length,
+                    growthRate: parseFloat(salesGrowthRate),
+                    averageOrderValue: recentOrders.length > 0
+                        ? currentRevenue / recentOrders.length
+                        : 0
+                },
+                inventory: {
+                    total: totalInventory,
+                    lowStock: lowStockItems,
+                    outOfStock: outOfStockItems,
+                    healthScore: totalInventory > 0
+                        ? ((totalInventory - lowStockItems) / totalInventory * 100).toFixed(2)
+                        : 100
+                },
+                schemes: {
+                    total: totalSchemes,
+                    active: activeSchemes,
+                    enrollments: {
+                        active: activeEnrollments,
+                        completed: completedEnrollments,
+                        total: userSchemes.length
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error in getReportsStats:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // @desc    Generate reports
 // @route   GET /api/v1/super-admin/reports/:type
 // @access  Private/SuperAdmin
 exports.getReport = async (req, res) => {
     try {
         const { type } = req.params;
-        // Placeholder for real report generation logic
-        // In a real app, this might generate an Excel/CSV file
-        res.status(200).json({
-            success: true,
-            message: `Report for ${type} generated successfully`,
-            data: { type, generatedAt: new Date() }
+        const { format = 'excel' } = req.query; // Support format query param
+        const XLSX = require('xlsx');
+        const Scheme = require('../models/Scheme');
+        const UserScheme = require('../models/UserScheme');
+
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        let worksheetData = [];
+        let fileName = '';
+
+        switch (type.toLowerCase()) {
+            case 'sales':
+                // Sales report with revenue trends
+                const salesOrders = await Order.find({
+                    createdAt: { $gte: thirtyDaysAgo },
+                    orderStatus: { $ne: 'CANCELLED' }
+                }).sort({ createdAt: -1 }).populate('user', 'name email phone');
+
+                const totalRevenue = salesOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+                const avgOrderValue = salesOrders.length > 0 ? totalRevenue / salesOrders.length : 0;
+
+                // Create worksheet data
+                worksheetData = [
+                    ['Sales Report - Last 30 Days'],
+                    ['Generated:', new Date().toLocaleString()],
+                    ['Generated By:', req.admin.email],
+                    [],
+                    ['Summary'],
+                    ['Total Orders:', salesOrders.length],
+                    ['Total Revenue:', `₹${totalRevenue.toFixed(2)}`],
+                    ['Average Order Value:', `₹${avgOrderValue.toFixed(2)}`],
+                    [],
+                    ['Order Details'],
+                    ['Order ID', 'Date', 'Customer Name', 'Customer Email', 'Amount', 'Status', 'Payment Status'],
+                    ...salesOrders.map(order => [
+                        order._id.toString(),
+                        new Date(order.createdAt).toLocaleString(),
+                        order.user?.name || 'N/A',
+                        order.user?.email || 'N/A',
+                        `₹${(order.totalAmount || 0).toFixed(2)}`,
+                        order.orderStatus,
+                        order.paymentStatus
+                    ])
+                ];
+                fileName = `Sales_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+                break;
+
+            case 'users':
+                // User growth report
+                const allUsers = await User.find({}).sort({ createdAt: -1 });
+                const recentUsers = allUsers.filter(user => user.createdAt >= thirtyDaysAgo);
+                const activeUsers = allUsers.filter(user => user.isActive).length;
+                const blockedUsers = allUsers.filter(user => !user.isActive).length;
+
+                worksheetData = [
+                    ['User Growth Report - Last 30 Days'],
+                    ['Generated:', new Date().toLocaleString()],
+                    ['Generated By:', req.admin.email],
+                    [],
+                    ['Summary'],
+                    ['Total Users:', allUsers.length],
+                    ['New Users (Last 30 Days):', recentUsers.length],
+                    ['Active Users:', activeUsers],
+                    ['Blocked Users:', blockedUsers],
+                    [],
+                    ['New User Details'],
+                    ['User ID', 'Name', 'Email', 'Phone', 'Joined Date', 'Status'],
+                    ...recentUsers.map(user => [
+                        user._id.toString(),
+                        user.name,
+                        user.email,
+                        user.phone || 'N/A',
+                        new Date(user.createdAt).toLocaleString(),
+                        user.isActive ? 'Active' : 'Blocked'
+                    ])
+                ];
+                fileName = `Users_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+                break;
+
+            case 'inventory':
+                // Inventory health report
+                const inventoryItems = await Inventory.find({}).populate('product');
+                const lowStockItems = inventoryItems.filter(item => item.quantity <= 10);
+                const totalValue = inventoryItems.reduce((sum, item) =>
+                    sum + (item.quantity * (item.product?.price || 0)), 0);
+
+                worksheetData = [
+                    ['Inventory Health Report'],
+                    ['Generated:', new Date().toLocaleString()],
+                    ['Generated By:', req.admin.email],
+                    [],
+                    ['Summary'],
+                    ['Total Items:', inventoryItems.length],
+                    ['Low Stock Items:', lowStockItems.length],
+                    ['Total Inventory Value:', `₹${totalValue.toFixed(2)}`],
+                    [],
+                    ['Inventory Details'],
+                    ['Product ID', 'Product Name', 'SKU', 'Quantity', 'Price', 'Total Value', 'Status'],
+                    ...inventoryItems.map(item => [
+                        item.product?._id?.toString() || 'N/A',
+                        item.product?.name || 'N/A',
+                        item.product?.sku || 'N/A',
+                        item.quantity,
+                        `₹${(item.product?.price || 0).toFixed(2)}`,
+                        `₹${(item.quantity * (item.product?.price || 0)).toFixed(2)}`,
+                        item.quantity <= 10 ? 'Low Stock' : 'In Stock'
+                    ])
+                ];
+                fileName = `Inventory_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+                break;
+
+            case 'schemes':
+                // Schemes activity report
+                const schemes = await Scheme.find({});
+                const userSchemes = await UserScheme.find({}).populate('scheme user');
+                const activeEnrollments = userSchemes.filter(us => us.status === 'ACTIVE').length;
+                const completedEnrollments = userSchemes.filter(us => us.status === 'COMPLETED').length;
+
+                worksheetData = [
+                    ['Schemes Performance Report'],
+                    ['Generated:', new Date().toLocaleString()],
+                    ['Generated By:', req.admin.email],
+                    [],
+                    ['Summary'],
+                    ['Total Schemes:', schemes.length],
+                    ['Active Schemes:', schemes.filter(s => s.isActive).length],
+                    ['Total Enrollments:', userSchemes.length],
+                    ['Active Enrollments:', activeEnrollments],
+                    ['Completed Enrollments:', completedEnrollments],
+                    [],
+                    ['Scheme Details'],
+                    ['Scheme ID', 'Scheme Name', 'Duration (Months)', 'Min Monthly Amount', 'Benefit %', 'Status', 'Total Enrollments'],
+                    ...schemes.map(scheme => [
+                        scheme._id.toString(),
+                        scheme.name,
+                        scheme.durationMonths,
+                        `₹${scheme.minMonthlyAmount}`,
+                        `${scheme.benefitPercentage}%`,
+                        scheme.isActive ? 'Active' : 'Inactive',
+                        userSchemes.filter(us => us.scheme._id.toString() === scheme._id.toString()).length
+                    ])
+                ];
+                fileName = `Schemes_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+                break;
+
+            default:
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid report type. Valid types: sales, users, inventory, schemes'
+                });
+        }
+
+        // Create workbook and worksheet
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+        // Auto-size columns
+        const maxWidth = worksheetData.reduce((w, r) => Math.max(w, r.length), 10);
+        worksheet['!cols'] = Array(maxWidth).fill({ wch: 20 });
+
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(workbook, worksheet, type.charAt(0).toUpperCase() + type.slice(1));
+
+        // Generate buffer
+        const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+        // Log report generation
+        await AuditLog.create({
+            admin: req.admin._id,
+            module: 'REPORTS',
+            action: 'GENERATE_REPORT',
+            details: `Generated ${type} report as Excel file`,
+            ipAddress: req.ip
         });
+
+        // Set headers for file download
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.setHeader('Content-Length', excelBuffer.length);
+
+        // Send file
+        res.send(excelBuffer);
     } catch (error) {
+        console.error('Error in getReport:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };

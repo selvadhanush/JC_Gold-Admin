@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../api';
-import Skeleton from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
 import { showToast } from '../utils/toast';
 
 const { width } = Dimensions.get('window');
@@ -186,8 +186,8 @@ export default function ProductDetail() {
                 <View className="px-6">
                     <Skeleton width="100%" height={450} style={{ borderRadius: 40, marginTop: 10 }} />
                     <View className="mt-8">
-                        <Skeleton width={120} height={12} className="mb-2" />
-                        <Skeleton width="90%" height={32} className="mb-4" />
+                        <Skeleton width={120} height={12} style={{ marginBottom: 8 }} />
+                        <Skeleton width="90%" height={32} style={{ marginBottom: 16 }} />
                         <Skeleton width={150} height={28} />
                     </View>
                     <View className="flex-row flex-wrap justify-between mt-10">
@@ -196,7 +196,7 @@ export default function ProductDetail() {
                         ))}
                     </View>
                     <View className="mt-6">
-                        <Skeleton width={100} height={20} className="mb-4" />
+                        <Skeleton width={100} height={20} style={{ marginBottom: 16 }} />
                         <Skeleton width="100%" height={100} style={{ borderRadius: 24 }} />
                     </View>
                 </View>
@@ -243,10 +243,10 @@ export default function ProductDetail() {
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={toggleWishlist}
-                        className="w-12 h-12 items-center justify-center rounded-2xl bg-white/80 backdrop-blur-md border border-gray-100"
+                        className={`w-12 h-12 items-center justify-center rounded-2xl border backdrop-blur-md ${isInWishlist ? 'bg-orange-50 border-orange-200 shadow-sm' : 'bg-white/80 border-gray-100'}`}
                     >
                         <Ionicons
-                            name={isInWishlist ? 'heart' : 'heart-outline'}
+                            name={isInWishlist ? 'diamond' : 'diamond-outline'}
                             size={22}
                             color={isInWishlist ? '#f97316' : '#111827'}
                         />
@@ -296,12 +296,22 @@ export default function ProductDetail() {
                         ))}
                     </View>
 
-                    {/* Quality Badge */}
-                    <View className="absolute top-8 left-10 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-sm border border-white/50">
-                        <View className="flex-row items-center">
-                            <Ionicons name="shield-checkmark" size={14} color="#10b981" />
-                            <Text className="ml-2 text-[10px] font-black uppercase tracking-widest text-gray-900">100% Certified</Text>
+                    {/* Quality Badges */}
+                    <View className="absolute top-8 left-10 flex-row space-x-2">
+                        <View className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-sm border border-white/50">
+                            <View className="flex-row items-center">
+                                <Ionicons name="shield-checkmark" size={14} color="#10b981" />
+                                <Text className="ml-2 text-[10px] font-black uppercase tracking-widest text-gray-900">100% Certified</Text>
+                            </View>
                         </View>
+                        {isInWishlist && (
+                            <View className="bg-orange-500 px-4 py-2 rounded-2xl shadow-lg border border-orange-400">
+                                <View className="flex-row items-center">
+                                    <Ionicons name="diamond" size={12} color="white" />
+                                    <Text className="ml-2 text-[10px] font-black uppercase tracking-widest text-white">Wishlisted</Text>
+                                </View>
+                            </View>
+                        )}
                     </View>
                 </View>
 
@@ -312,9 +322,19 @@ export default function ProductDetail() {
                         <Text className="text-3xl font-black text-gray-900 flex-1 mr-4">{product.name}</Text>
                     </View>
 
-                    <View className="flex-row items-end mb-10">
-                        <Text className="text-3xl font-black text-primary-600">₹{product.price.toLocaleString()}</Text>
-                        <Text className="text-gray-400 text-xs font-bold mb-1.5 ml-3">Incl. all taxes</Text>
+                    <View className="flex-row items-center mb-10">
+                        <View>
+                            <View className="flex-row items-end">
+                                <Text className="text-3xl font-black text-primary-600">₹{product.price.toLocaleString()}</Text>
+                                <Text className="text-gray-400 text-xs font-bold mb-1.5 ml-3">Incl. all taxes</Text>
+                            </View>
+                        </View>
+                        {isInCart && (
+                            <View className="ml-auto bg-green-50 px-4 py-2 rounded-full border border-green-100 flex-row items-center">
+                                <Ionicons name="checkmark-circle" size={14} color="#10b981" />
+                                <Text className="ml-2 text-[10px] font-black text-green-700 uppercase tracking-widest">In Your Cart</Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* Trust Badges */}

@@ -373,7 +373,7 @@ export default function FinanceAdminDashboard() {
                     <View className="px-6 mb-6">
                         <TouchableOpacity
                             activeOpacity={0.9}
-                            onPress={() => router.push('/Financeadmin/payments')}
+                            onPress={() => router.push('/Financeadmin/gold_schemes_hub')}
                             className="bg-gray-50 rounded-[28px] p-5 flex-row items-center border border-gray-100"
                         >
                             <View className="w-14 h-14 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: health.color + '10' }}>
@@ -428,29 +428,15 @@ export default function FinanceAdminDashboard() {
                         <Text className="text-black font-black text-xl mb-4 ml-1">Operations</Text>
                         <View className="space-y-4">
                             <TouchableOpacity
-                                onPress={() => router.push('/Financeadmin/payments')}
+                                onPress={() => router.push('/Financeadmin/gold_schemes_hub')}
                                 className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex-row items-center"
                             >
                                 <View className="bg-white border border-emerald-100 w-14 h-14 rounded-2xl items-center justify-center shadow-inner">
-                                    <Ionicons name="card" size={28} color="#10b981" />
+                                    <Ionicons name="grid" size={28} color="#10b981" />
                                 </View>
                                 <View className="ml-5 flex-1">
-                                    <Text className="text-black font-black text-lg">Payments</Text>
+                                    <Text className="text-black font-black text-lg">Gold & Schemes</Text>
                                     <Text className="text-gray-500 text-xs font-medium">Manage all transactions</Text>
-                                </View>
-                                <Ionicons name="arrow-forward-circle" size={32} color="#000" />
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                onPress={() => router.push('/Financeadmin/digital_gold')}
-                                className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex-row items-center"
-                            >
-                                <View className="bg-white border border-yellow-100 w-14 h-14 rounded-2xl items-center justify-center shadow-inner">
-                                    <Ionicons name="trending-up" size={28} color="#eab308" />
-                                </View>
-                                <View className="ml-5 flex-1">
-                                    <Text className="text-black font-black text-lg">Digital Gold</Text>
-                                    <Text className="text-gray-500 text-xs font-medium">Manage rates & approvals</Text>
                                 </View>
                                 <Ionicons name="arrow-forward-circle" size={32} color="#000" />
                             </TouchableOpacity>
@@ -529,53 +515,6 @@ export default function FinanceAdminDashboard() {
                                 </View>
                                 <Ionicons name="arrow-forward-circle" size={32} color="#000" />
                             </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {/* Recent Order Payments */}
-                    <View className="px-6 mb-8">
-                        <View className="flex-row justify-between items-center mb-4">
-                            <Text className="text-black font-black text-xl ml-1">Order Payments</Text>
-                            <TouchableOpacity onPress={() => router.push('/Financeadmin/payments')}>
-                                <Text className="text-emerald-600 font-bold text-xs">VIEW ALL</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <View className="bg-white border border-gray-100 rounded-[32px] overflow-hidden shadow-sm">
-                            {stats?.payments?.recent && stats.payments.recent.length > 0 ? (
-                                stats.payments.recent.map((payment: any, index: number) => (
-                                    <View
-                                        key={payment._id}
-                                        className={`p-5 flex-row items-center ${index !== stats.payments.recent.length - 1 ? 'border-b border-gray-50' : ''}`}
-                                    >
-                                        <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${payment.status === 'COMPLETED' ? 'bg-emerald-50' : 'bg-amber-50'}`}>
-                                            <Ionicons
-                                                name={payment.status === 'COMPLETED' ? 'checkmark-circle' : 'time'}
-                                                size={24}
-                                                color={payment.status === 'COMPLETED' ? '#10b981' : '#f59e0b'}
-                                            />
-                                        </View>
-                                        <View className="flex-1">
-                                            <Text className="text-black font-black text-base">₹{payment.amount}</Text>
-                                            <Text className="text-gray-400 text-[10px] font-bold uppercase" numberOfLines={1}>
-                                                {payment.user?.name || payment.user?.email || 'Customer'}
-                                            </Text>
-                                        </View>
-                                        <View className="items-end">
-                                            <Text className="text-gray-950 font-black text-xs">
-                                                {new Date(payment.createdAt).toLocaleDateString([], { day: '2-digit', month: 'short' })}
-                                            </Text>
-                                            <Text className={`text-[9px] font-black uppercase mt-1 ${payment.status === 'COMPLETED' ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                                {payment.status}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                ))
-                            ) : (
-                                <View className="p-10 items-center">
-                                    <Ionicons name="receipt-outline" size={32} color="#d1d5db" />
-                                    <Text className="text-gray-400 text-xs font-bold mt-2">No recent payments</Text>
-                                </View>
-                            )}
                         </View>
                     </View>
 

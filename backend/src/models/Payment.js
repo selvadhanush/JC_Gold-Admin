@@ -41,7 +41,7 @@ const paymentSchema = new mongoose.Schema({
     },
     paymentType: {
         type: String,
-        enum: ['ORDER', 'SCHEME_INSTALMENT', 'WALLET_TOPUP'],
+        enum: ['ORDER', 'SCHEME_INSTALMENT', 'WALLET_TOPUP', 'DIGITAL_GOLD'],
         default: 'ORDER',
     },
 }, { timestamps: true });

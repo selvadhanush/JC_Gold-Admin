@@ -8,7 +8,7 @@ import { Platform } from 'react-native';
 
 const getBaseUrl = () => {
     // For Web, always use localhost
-    if (Platform.OS === 'web') return 'http://localhost:5000';
+    if (Platform.OS === 'web') return 'http://10.105.228.96:5000';
 
     // For Physical Devices (Android/iOS) running via Expo Go
     const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.debuggerHost;
@@ -21,10 +21,10 @@ const getBaseUrl = () => {
     if (Platform.OS === 'android') return 'http://10.0.2.2:5000';
 
     // Fallback for iOS Simulator
-    return 'http://localhost:5000';
+    return 'http://10.105.228.96:5000';
 };
 
-export const BASE_URL = getBaseUrl(); // Standard bridge for Android Emulator
+export const BASE_URL = 'http://10.105.228.96:5000'; // Local development IP
 
 import * as SecureStore from 'expo-secure-store';
 
@@ -44,6 +44,10 @@ export const API_ENDPOINTS = {
     SUPER_RESET_PWD: (id) => `${BASE_URL}/api/v1/super-admin/admins/${id}/reset-password`,
     SUPER_CMS_BANNER: `${BASE_URL}/api/v1/cms/banners`,
     SUPER_CMS_CONTENT: `${BASE_URL}/api/v1/cms/content`,
+    // Admin KYC Management
+    ADMIN_KYC: `${BASE_URL}/api/v1/admin/kyc`,
+    ADMIN_KYC_APPROVE: (id) => `${BASE_URL}/api/v1/admin/kyc/${id}/approve`,
+    ADMIN_KYC_REJECT: (id) => `${BASE_URL}/api/v1/admin/kyc/${id}/reject`,
 
     // Product Admin - Categories
     PRODUCT_CATEGORIES: `${BASE_URL}/api/v1/categories`,
@@ -90,6 +94,7 @@ export const API_ENDPOINTS = {
     // Support
     BUYER_SUPPORT: `${BASE_URL}/api/v1/support/buyer`,
     ADMIN_SUPPORT: `${BASE_URL}/api/v1/support/admin`,
+    ADMIN_SUPPORT_UPDATE: (id) => `${BASE_URL}/api/v1/support/admin/${id}`,
 
     // Finance Admin - Schemes
     FINANCE_SCHEMES: `${BASE_URL}/api/v1/schemes`,
@@ -115,6 +120,7 @@ export const API_ENDPOINTS = {
     BUYER_DIGITAL_GOLD_WALLET: `${BASE_URL}/api/v1/buyer/digital-gold/wallet`,
     BUYER_DIGITAL_GOLD_REDEEM: `${BASE_URL}/api/v1/buyer/digital-gold/redeem`,
     BUYER_DIGITAL_GOLD_TRANSACTIONS: `${BASE_URL}/api/v1/buyer/digital-gold/transactions`,
+    BUYER_DIGITAL_GOLD_REDEMPTIONS: `${BASE_URL}/api/v1/buyer/digital-gold/redemptions`,
 
     // Digital Gold - Admin
     ADMIN_GOLD_RATE: `${BASE_URL}/api/v1/admin/digital-gold/gold-rate`,
@@ -125,6 +131,37 @@ export const API_ENDPOINTS = {
     // Razorpay
     BUYER_RAZORPAY_ORDER: `${BASE_URL}/api/v1/buyer/payments/razorpay-order`,
     BUYER_RAZORPAY_VERIFY: `${BASE_URL}/api/v1/buyer/payments/verify`,
+
+    // Schemes - Buyer
+    BUYER_SCHEMES: `${BASE_URL}/api/v1/buyer/schemes`,
+    BUYER_SCHEME_ENROLL: (id) => `${BASE_URL}/api/v1/buyer/schemes/${id}/enroll`,
+    BUYER_MY_SCHEMES: `${BASE_URL}/api/v1/buyer/schemes/my/all`,
+    BUYER_SCHEME_INSTALLMENT: (id) => `${BASE_URL}/api/v1/buyer/schemes/my/${id}/installment`,
+    BUYER_SCHEME_STATUS: (id) => `${BASE_URL}/api/v1/buyer/schemes/my/${id}/status`,
+    // KYC - Buyer
+    BUYER_KYC_STATUS: `${BASE_URL}/api/v1/buyer/kyc/status`,
+    BUYER_KYC_SUBMIT: `${BASE_URL}/api/v1/buyer/kyc/submit`,
+    BUYER_KYC_RESUBMIT: `${BASE_URL}/api/v1/buyer/kyc/resubmit`,
+    BUYER_KYC_UPLOAD: `${BASE_URL}/api/v1/buyer/kyc/upload-document`,
+    // MPIN - Buyer
+    BUYER_MPIN_SET: `${BASE_URL}/api/v1/buyer/mpin/set`,
+    BUYER_MPIN_VERIFY: `${BASE_URL}/api/v1/buyer/mpin/verify`,
+    BUYER_MPIN_STATUS: `${BASE_URL}/api/v1/buyer/mpin/status`,
+    BUYER_MPIN_CHANGE: `${BASE_URL}/api/v1/buyer/mpin/change`,
+
+    // General Tickets
+    GENERAL_TICKETS_CREATE: `${BASE_URL}/api/v1/general-tickets`,
+    GENERAL_TICKETS_MY: `${BASE_URL}/api/v1/general-tickets/my`,
+    GENERAL_TICKETS_ADMIN: `${BASE_URL}/api/v1/general-tickets/admin`,
+    GENERAL_TICKETS_UPDATE: (id) => `${BASE_URL}/api/v1/general-tickets/${id}`,
+    // Bank Account - Buyer
+    BUYER_BANK_ACCOUNT: `${BASE_URL}/api/v1/buyer/bank-account`,
+
+    // Maintenance Mode
+    MAINTENANCE_STATUS: `${BASE_URL}/api/v1/maintenance/status`,
+    MAINTENANCE_COUNTDOWN: `${BASE_URL}/api/v1/maintenance/countdown`,
+    MAINTENANCE_ACTIVATE: `${BASE_URL}/api/v1/maintenance/activate`,
+    MAINTENANCE_DEACTIVATE: `${BASE_URL}/api/v1/maintenance/deactivate`,
 };
 
 export const getAuthHeaders = async () => {

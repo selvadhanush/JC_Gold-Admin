@@ -6,6 +6,7 @@ interface InputProps extends TextInputProps {
     error?: string;
     icon?: string;
     containerClassName?: string;
+    className?: string;
 }
 
 export default function Input({
@@ -23,8 +24,7 @@ export default function Input({
                     {label}
                 </Text>
             )}
-            <View className={`bg-white rounded-xl px-4 py-3 border flex-row items-center ${error ? 'border-red-500' : 'border-gray-200'
-                }`}>
+            <View className={`bg-white rounded-xl px-4 py-3 border flex-row items-center ${error ? 'border-red-500' : 'border-gray-200'}`}>
                 {icon && <Text className="mr-3 text-lg">{icon}</Text>}
                 <TextInput
                     className={`flex-1 text-base text-gray-800 ${className}`}

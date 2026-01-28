@@ -151,7 +151,6 @@ export default function ProductAdminDashboard() {
     if (loading && !refreshing) {
         return (
             <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-                <Stack.Screen options={{ headerShown: false }} />
                 <DashboardSkeleton />
             </SafeAreaView>
         );
@@ -160,7 +159,6 @@ export default function ProductAdminDashboard() {
     return (
         <View className="flex-1 bg-white">
             <StatusBar barStyle="dark-content" />
-            <Stack.Screen options={{ headerShown: false }} />
 
             <ScrollView
                 className="flex-1"

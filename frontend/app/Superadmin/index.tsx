@@ -15,7 +15,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders, BASE_URL } from '../../api';
 import * as SecureStore from 'expo-secure-store';
-import { DashboardSkeleton } from '../../components/SkeletonLoader';
+import { Skeleton } from '../../components/Skeleton';
 
 const { width } = Dimensions.get('window');
 
@@ -36,6 +36,7 @@ export default function SuperAdminDashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [userData, setUserData] = useState<any>(null);
+    const [openTickets, setOpenTickets] = useState(0);
 
     // Animations
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -44,6 +45,7 @@ export default function SuperAdminDashboard() {
     useEffect(() => {
         fetchDashboardData();
         loadUserData();
+        fetchOpenTickets();
     }, []);
 
     const loadUserData = async () => {
@@ -88,6 +90,20 @@ export default function SuperAdminDashboard() {
         }
     };
 
+    const fetchOpenTickets = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.GENERAL_TICKETS_ADMIN, { headers });
+            const data = await response.json();
+            if (data.success) {
+                const openCount = data.data.filter((t: any) => t.status === 'open' || t.status === 'in-progress').length;
+                setOpenTickets(openCount);
+            }
+        } catch (error) {
+            console.error('Failed to fetch ticket count');
+        }
+    };
+
     const handleLogout = async () => {
         await SecureStore.deleteItemAsync('userToken');
         await SecureStore.deleteItemAsync('userData');
@@ -115,10 +131,68 @@ export default function SuperAdminDashboard() {
 
     if (loading && !refreshing) {
         return (
-            <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+            <View style={{ flex: 1, backgroundColor: 'white' }}>
                 <Stack.Screen options={{ headerShown: false }} />
-                <DashboardSkeleton />
-            </SafeAreaView>
+                <StatusBar barStyle="dark-content" />
+
+                {/* Header Skeleton */}
+                <View className="bg-white px-6 pt-12 pb-4 border-b border-gray-100 flex-row justify-between items-center">
+                    <View>
+                        <Skeleton width={100} height={12} style={{ marginBottom: 8 }} />
+                        <Skeleton width={220} height={28} />
+                    </View>
+                    <Skeleton width={40} height={40} borderRadius={20} />
+                </View>
+
+                <ScrollView contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false}>
+                    {/* Hero Card Skeleton */}
+                    <View style={{ backgroundColor: 'white', borderRadius: 32, borderWidth: 1, borderColor: '#f3f4f6', padding: 24, marginBottom: 24 }}>
+                        <Skeleton width={100} height={20} borderRadius={10} style={{ marginBottom: 16 }} />
+                        <Skeleton width="60%" height={32} style={{ marginBottom: 8 }} />
+                        <Skeleton width="40%" height={16} style={{ marginBottom: 32 }} />
+
+                        <View className="flex-row">
+                            <View className="flex-1">
+                                <Skeleton width={60} height={12} style={{ marginBottom: 8 }} />
+                                <Skeleton width={100} height={32} />
+                            </View>
+                            <View style={{ width: 1, height: 48, backgroundColor: '#f3f4f6', marginHorizontal: 24 }} />
+                            <View className="flex-1">
+                                <Skeleton width={60} height={12} style={{ marginBottom: 8 }} />
+                                <Skeleton width={100} height={32} />
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Health Widget Skeleton */}
+                    <View style={{ backgroundColor: '#f9fafb', borderRadius: 28, padding: 20, marginBottom: 24, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#f3f4f6' }}>
+                        <Skeleton width={56} height={56} borderRadius={16} style={{ marginRight: 16 }} />
+                        <View className="flex-1">
+                            <Skeleton width="70%" height={24} style={{ marginBottom: 8 }} />
+                            <Skeleton width="50%" height={14} />
+                        </View>
+                        <Skeleton width={40} height={40} borderRadius={20} />
+                    </View>
+
+                    <Skeleton width={150} height={24} style={{ marginBottom: 16, marginLeft: 4 }} />
+                    <View className="flex-row justify-between mb-8">
+                        <Skeleton width="47%" height={160} borderRadius={32} />
+                        <Skeleton width="47%" height={160} borderRadius={32} />
+                    </View>
+
+                    <Skeleton width={150} height={24} style={{ marginBottom: 16, marginLeft: 4 }} />
+                    {[1, 2, 3].map((i) => (
+                        <View key={i} style={{ backgroundColor: 'white', borderRadius: 32, padding: 24, marginBottom: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#f3f4f6' }}>
+                            <Skeleton width={56} height={56} borderRadius={16} />
+                            <View className="flex-1 ml-5">
+                                <Skeleton width="60%" height={20} style={{ marginBottom: 8 }} />
+                                <Skeleton width="40%" height={12} />
+                            </View>
+                            <Skeleton width={32} height={32} borderRadius={16} />
+                        </View>
+                    ))}
+                </ScrollView>
+            </View>
         );
     }
 
@@ -184,6 +258,25 @@ export default function SuperAdminDashboard() {
                 </Modal>
 
                 <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] }}>
+                    {/* Alerts Section */}
+                    {openTickets > 0 && (
+                        <TouchableOpacity
+                            onPress={() => router.push({ pathname: '/Superadmin/manage_users', params: { section: 'tickets' } } as any)}
+                            className="mx-6 mt-6 mb-2 bg-red-500 rounded-2xl p-4 flex-row items-center shadow-lg shadow-red-500/30"
+                        >
+                            <View className="bg-white/20 w-10 h-10 rounded-xl items-center justify-center mr-3">
+                                <Ionicons name="notifications" size={20} color="white" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-white font-black text-sm">Action Required</Text>
+                                <Text className="text-white/90 text-xs font-medium">{openTickets} New Support Ticket{openTickets > 1 ? 's' : ''} Raised</Text>
+                            </View>
+                            <View className="bg-white px-3 py-1.5 rounded-lg flex-row items-center">
+                                <Text className="text-red-500 text-[10px] font-black uppercase">View</Text>
+                                <Ionicons name="arrow-forward" size={12} color="#ef4444" style={{ marginLeft: 4 }} />
+                            </View>
+                        </TouchableOpacity>
+                    )}
                     {/* Hero Performance Card */}
                     <View className="p-6">
                         <View className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm relative overflow-hidden">
@@ -223,7 +316,7 @@ export default function SuperAdminDashboard() {
                     <View className="px-6 mb-6">
                         <TouchableOpacity
                             activeOpacity={0.9}
-                            onPress={() => router.replace('/Superadmin/system_settings')}
+                            onPress={() => router.push('/Superadmin/system_settings')}
                             className="bg-gray-50 rounded-[28px] p-5 flex-row items-center border border-gray-100"
                         >
                             <View className="w-14 h-14 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: health.color + '10' }}>
@@ -244,7 +337,7 @@ export default function SuperAdminDashboard() {
                         <Text className="text-black font-black text-xl mb-4 ml-1">Administration</Text>
                         <View className="flex-row justify-between">
                             <TouchableOpacity
-                                onPress={() => router.replace('/Superadmin/manage_admins')}
+                                onPress={() => router.push('/Superadmin/manage_admins')}
                                 className="bg-white border border-gray-100 rounded-[32px] p-6 mb-4 shadow-sm"
                                 style={{ width: (width - 60) / 2 }}
                             >
@@ -257,7 +350,7 @@ export default function SuperAdminDashboard() {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                onPress={() => router.replace('/Superadmin/manage_users')}
+                                onPress={() => router.push('/Superadmin/manage_users')}
                                 className="bg-white border border-gray-100 rounded-[32px] p-6 mb-4 shadow-sm"
                                 style={{ width: (width - 60) / 2 }}
                             >
@@ -276,7 +369,7 @@ export default function SuperAdminDashboard() {
                         <Text className="text-black font-black text-xl mb-4 ml-1">Operations</Text>
                         <View className="space-y-4">
                             <TouchableOpacity
-                                onPress={() => router.replace('/Superadmin/audit_logs')}
+                                onPress={() => router.push('/Superadmin/audit_logs')}
                                 className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex-row items-center"
                             >
                                 <View className="bg-white border border-orange-100 w-14 h-14 rounded-2xl items-center justify-center shadow-inner">
@@ -290,11 +383,11 @@ export default function SuperAdminDashboard() {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                onPress={() => router.push('/Financeadmin/digital_gold' as any)}
+                                onPress={() => router.push('/Superadmin/digital_gold_view')}
                                 className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex-row items-center"
                             >
                                 <View className="bg-white border border-yellow-100 w-14 h-14 rounded-2xl items-center justify-center shadow-inner">
-                                    <Ionicons name="sparkles" size={28} color="#eab308" />
+                                    <Ionicons name="albums" size={28} color="#eab308" />
                                 </View>
                                 <View className="ml-5 flex-1">
                                     <Text className="text-black font-black text-lg">Digital Gold Vault</Text>

@@ -12,11 +12,11 @@ import {
     Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, getAuthHeaders } from '../api';
 import BottomNav from '../components/BottomNav';
-import Skeleton from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
 
 const { width } = Dimensions.get('window');
 const CARD_MARGIN = 8;
@@ -28,9 +28,12 @@ interface Product {
     name: string;
     description: string;
     category: string;
-    metalType: string;
-    purity: string;
-    weight: number;
+    specifications: {
+        metalType: string;
+        purity: string;
+        weight: number;
+        size?: string;
+    };
     price: number;
     makingCharges: number;
     images: string[];
@@ -54,10 +57,20 @@ export default function ProductsBrowse() {
     const [selectedMetal, setSelectedMetal] = useState('');
     const [priceRange, setPriceRange] = useState({ min: '', max: '' });
 
+    const [cartItems, setCartItems] = useState<string[]>([]);
+    const [wishlistItems, setWishlistItems] = useState<string[]>([]);
+
     useEffect(() => {
         fetchCategories();
         fetchProducts();
     }, []);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchCart();
+            fetchWishlist();
+        }, [])
+    );
 
     useEffect(() => {
         fetchProducts();
@@ -74,6 +87,33 @@ export default function ProductsBrowse() {
         } catch (error) {
             console.error('Error fetching categories:', error);
         }
+    };
+
+    const fetchCart = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.BUYER_CART, { headers });
+            const data = await response.json();
+            console.log('Cart Data:', data); // Debugging
+            if (data.success && data.data && data.data.items) {
+                const ids = data.data.items
+                    .filter((item: any) => item.product)
+                    .map((item: any) => item.product._id);
+                setCartItems(ids);
+            }
+        } catch (error) { console.error('Fetch Cart Error:', error); }
+    };
+
+    const fetchWishlist = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.BUYER_WISHLIST, { headers });
+            const data = await response.json();
+            if (data.success) {
+                const ids = data.data.map((item: any) => item.product._id);
+                setWishlistItems(ids);
+            }
+        } catch (error) { }
     };
 
     const fetchProducts = async () => {
@@ -116,6 +156,7 @@ export default function ProductsBrowse() {
                 headers,
                 body: JSON.stringify({ productId }),
             });
+            setWishlistItems([...wishlistItems, productId]);
         } catch (error) {
             console.error('Error adding to wishlist:', error);
         }
@@ -129,6 +170,7 @@ export default function ProductsBrowse() {
                 headers,
                 body: JSON.stringify({ productId, quantity }),
             });
+            setCartItems([...cartItems, productId]);
         } catch (error) {
             console.error('Error adding to cart:', error);
         }
@@ -158,7 +200,7 @@ export default function ProductsBrowse() {
                     className="absolute top-2 right-2 w-8 h-8 bg-white/90 rounded-full items-center justify-center shadow-sm"
                     onPress={() => addToWishlist(item._id)}
                 >
-                    <Ionicons name="heart-outline" size={18} color="#f97316" />
+                    <Ionicons name={wishlistItems.includes(item._id) ? "diamond" : "diamond-outline"} size={18} color={wishlistItems.includes(item._id) ? "#ec4899" : "#d1d5db"} />
                 </TouchableOpacity>
 
                 {item.stock < 5 && item.stock > 0 && (
@@ -175,7 +217,7 @@ export default function ProductsBrowse() {
 
                 <View className="flex-row items-center mb-2">
                     <Text className="text-gray-500 text-[10px] font-medium uppercase tracking-wider">
-                        {item.metalType} • {item.purity}
+                        {item.specifications?.metalType} . {item.specifications?.purity} . {item.specifications?.weight}g
                     </Text>
                 </View>
 
@@ -190,7 +232,7 @@ export default function ProductsBrowse() {
                         className="bg-primary-600 w-8 h-8 rounded-full items-center justify-center shadow-lg shadow-primary-600/30"
                         onPress={() => addToCart(item._id)}
                     >
-                        <Ionicons name="add" size={20} color="white" />
+                        <Ionicons name={cartItems.includes(item._id) ? "cart" : "add"} size={18} color="white" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -202,8 +244,8 @@ export default function ProductsBrowse() {
             {[1, 2, 3, 4, 5, 6].map((i) => (
                 <View key={i} style={{ width: CARD_WIDTH, margin: CARD_MARGIN }} className="mb-4">
                     <Skeleton width="100%" height={160} style={{ borderRadius: 24 }} />
-                    <Skeleton width="80%" height={12} className="mt-3" />
-                    <Skeleton width="40%" height={16} className="mt-2" />
+                    <Skeleton width="80%" height={12} style={{ marginTop: 12 }} />
+                    <Skeleton width="40%" height={16} style={{ marginTop: 8 }} />
                 </View>
             ))}
         </View>

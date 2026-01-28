@@ -416,13 +416,35 @@ export default function AllOrdersPage() {
                                     key={order._id}
                                     onLongPress={() => { setSelectionMode(true); toggleOrderSelection(order._id); }}
                                     onPress={() => selectionMode ? toggleOrderSelection(order._id) : router.push(`/Orderadmin/order_detail?id=${order._id}`)}
-                                    className={`bg-white rounded-[28px] p-5 mb-4 border-2 shadow-lg ${isSelected ? 'border-blue-600 bg-blue-50/30' : 'border-gray-100'}`}
+                                    style={{
+                                        borderRadius: 28,
+                                        padding: 20,
+                                        marginBottom: 16,
+                                        borderWidth: 2,
+                                        borderColor: isSelected ? '#2563eb' : '#f3f4f6',
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 4 },
+                                        shadowOpacity: 0.1,
+                                        shadowRadius: 10,
+                                        elevation: 4,
+                                        backgroundColor: isSelected ? '#eff6ff' : 'white'
+                                    }}
                                 >
                                     {/* Header Row */}
                                     <View className="flex-row justify-between items-start mb-4">
                                         <View className="flex-row items-center flex-1">
                                             {selectionMode && (
-                                                <View className={`w-6 h-6 rounded-full border-2 mr-3 items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
+                                                <View style={{
+                                                    width: 24,
+                                                    height: 24,
+                                                    borderRadius: 9999,
+                                                    borderWidth: 2,
+                                                    marginRight: 12,
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    backgroundColor: isSelected ? '#2563eb' : 'transparent',
+                                                    borderColor: isSelected ? '#2563eb' : '#d1d5db'
+                                                }}>
                                                     {isSelected && <Ionicons name="checkmark" size={14} color="white" />}
                                                 </View>
                                             )}
@@ -528,7 +550,15 @@ export default function AllOrdersPage() {
                                     key={status}
                                     onPress={() => handleBulkAction(status)}
                                     disabled={batchUpdating}
-                                    className="bg-white/10 p-3 rounded-2xl flex-1 items-center border border-white/20"
+                                    style={{
+                                        flex: 1,
+                                        alignItems: 'center',
+                                        padding: 12,
+                                        borderRadius: 16,
+                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                        borderWidth: 1,
+                                        borderColor: 'rgba(255, 255, 255, 0.2)'
+                                    }}
                                 >
                                     <Ionicons
                                         name={status === 'CONFIRMED' ? 'checkmark-circle' : status === 'PACKED' ? 'cube' : status === 'SHIPPED' ? 'airplane' : 'checkmark-done'}
@@ -580,9 +610,20 @@ export default function AllOrdersPage() {
                                             <TouchableOpacity
                                                 key={range}
                                                 onPress={() => setFilters({ ...filters, dateRange: range })}
-                                                className={`px-4 py-2.5 rounded-xl border-2 ${filters.dateRange === range ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-100'}`}
+                                                style={{
+                                                    paddingHorizontal: 16,
+                                                    paddingVertical: 10,
+                                                    borderRadius: 12,
+                                                    borderWidth: 2,
+                                                    backgroundColor: filters.dateRange === range ? '#2563eb' : 'white',
+                                                    borderColor: filters.dateRange === range ? '#2563eb' : '#f3f4f6'
+                                                }}
                                             >
-                                                <Text className={`font-bold text-xs ${filters.dateRange === range ? 'text-white' : 'text-gray-600'}`}>{range}</Text>
+                                                <Text style={{
+                                                    fontWeight: 'bold',
+                                                    fontSize: 12,
+                                                    color: filters.dateRange === range ? 'white' : '#4b5563'
+                                                }}>{range}</Text>
                                             </TouchableOpacity>
                                         ))}
                                     </View>
@@ -596,9 +637,21 @@ export default function AllOrdersPage() {
                                             <TouchableOpacity
                                                 key={status}
                                                 onPress={() => setFilters({ ...filters, status })}
-                                                className={`px-4 py-2.5 rounded-xl border-2 mr-2 ${filters.status === status ? 'bg-black border-black' : 'bg-white border-gray-100'}`}
+                                                style={{
+                                                    paddingHorizontal: 16,
+                                                    paddingVertical: 10,
+                                                    borderRadius: 12,
+                                                    borderWidth: 2,
+                                                    marginRight: 8,
+                                                    backgroundColor: filters.status === status ? '#000000' : 'white',
+                                                    borderColor: filters.status === status ? '#000000' : '#f3f4f6'
+                                                }}
                                             >
-                                                <Text className={`font-bold text-xs ${filters.status === status ? 'text-white' : 'text-gray-600'}`}>{status}</Text>
+                                                <Text style={{
+                                                    fontWeight: 'bold',
+                                                    fontSize: 12,
+                                                    color: filters.status === status ? 'white' : '#4b5563'
+                                                }}>{status}</Text>
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>

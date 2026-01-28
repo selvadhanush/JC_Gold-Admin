@@ -100,6 +100,7 @@ exports.approveKyc = async (req, res, next) => {
         await AuditLog.create({
             admin: req.admin._id,
             action: 'KYC_APPROVED',
+            module: 'KYC_MANAGEMENT',
             targetModel: 'Kyc',
             targetId: kyc._id,
             details: `Approved KYC for user: ${kyc.userId.name || kyc.userId.email}`
@@ -154,6 +155,7 @@ exports.rejectKyc = async (req, res, next) => {
         await AuditLog.create({
             admin: req.admin._id,
             action: 'KYC_REJECTED',
+            module: 'KYC_MANAGEMENT',
             targetModel: 'Kyc',
             targetId: kyc._id,
             details: `Rejected KYC for user: ${kyc.userId.name || kyc.userId.email}. Reason: ${rejectionReason}`

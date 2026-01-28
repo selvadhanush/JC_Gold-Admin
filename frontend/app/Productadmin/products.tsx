@@ -17,10 +17,8 @@ import {
     Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BASE_URL, getAuthHeaders } from '../../api';
-import ProductAdminNav from '../../components/ProductAdminNav';
 import * as ImagePicker from 'expo-image-picker';
 import { ProductListSkeleton } from '../../components/SkeletonLoader';
 import { showToast } from '../../utils/toast';
@@ -53,7 +51,6 @@ interface Category {
 type FilterType = 'ALL' | 'ACTIVE' | 'DRAFT' | 'OUT_OF_STOCK';
 
 export default function ProductsManagement() {
-    const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
@@ -69,6 +66,8 @@ export default function ProductsManagement() {
     const [submitting, setSubmitting] = useState(false);
     const [currentProductId, setCurrentProductId] = useState<string | null>(null);
     const [selectedImages, setSelectedImages] = useState<string[]>([]);
+    const [metalDropdownOpen, setMetalDropdownOpen] = useState(false);
+
 
     const [formData, setFormData] = useState({
         name: '',
@@ -289,7 +288,6 @@ export default function ProductsManagement() {
     if (loading && !refreshing) {
         return (
             <View className="flex-1 bg-white">
-                <Stack.Screen options={{ headerShown: false }} />
                 <ProductListSkeleton />
             </View>
         );
@@ -298,57 +296,61 @@ export default function ProductsManagement() {
     return (
         <View className="flex-1 bg-white">
             <StatusBar barStyle="dark-content" />
-            <Stack.Screen options={{ headerShown: false }} />
 
-            {/* Premium App Bar */}
-            <SafeAreaView edges={['top']} className="bg-white z-50">
+            {/* Refined App Bar */}
+            <SafeAreaView edges={['top']} className="bg-white border-b border-gray-50">
                 <View className="px-6 py-4 flex-row justify-between items-center">
                     <View>
-                        <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest">Inventory Management</Text>
-                        <Text className="text-3xl font-black text-black">Products</Text>
+                        <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-0.5">Catalog Control</Text>
+                        <Text className="text-2xl font-bold text-gray-900">Products</Text>
                     </View>
                     <TouchableOpacity
                         onPress={handleOpenCreate}
-                        className="bg-orange-600 w-12 h-12 rounded-2xl items-center justify-center shadow-xl shadow-orange-600/40"
+                        className="bg-gray-900 w-11 h-11 rounded-xl items-center justify-center shadow-lg shadow-gray-900/20"
                     >
-                        <Ionicons name="add" size={28} color="white" />
+                        <Ionicons name="add" size={24} color="white" />
                     </TouchableOpacity>
                 </View>
 
-                {/* Advanced Search & Filter Bar */}
+                {/* Professional Search Bar */}
                 <View className="px-6 pb-2">
-                    <View className="relative bg-gray-50 rounded-2xl border border-gray-100 px-4 py-3 flex-row items-center">
-                        <Ionicons name="search" size={20} color="#9ca3af" />
+                    <View className="bg-gray-50 rounded-xl border border-gray-200 px-4 py-2.5 flex-row items-center">
+                        <Ionicons name="search-outline" size={18} color="#9ca3af" />
                         <TextInput
-                            className="flex-1 ml-3 text-black font-medium"
-                            placeholder="Discover products by name, sku..."
+                            className="flex-1 ml-3 text-gray-900 font-medium text-sm"
+                            placeholder="Find products by name or SKU"
                             placeholderTextColor="#9ca3af"
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                         />
                         {searchQuery.length > 0 && (
                             <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Ionicons name="close-circle" size={20} color="#9ca3af" />
+                                <Ionicons name="close-circle" size={18} color="#9ca3af" />
                             </TouchableOpacity>
                         )}
                     </View>
                 </View>
 
-                {/* Filter Selector */}
+                {/* Refined Filter Selector */}
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    className="mt-2 mb-4"
-                    contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
+                    className="mb-4"
+                    contentContainerStyle={{ paddingHorizontal: 24, gap: 8 }}
                 >
-                    {['ALL', 'ACTIVE', 'DRAFT', 'OUT_OF_STOCK'].map((f) => (
+                    {[
+                        { id: 'ALL', label: 'All Products' },
+                        { id: 'ACTIVE', label: 'Active' },
+                        { id: 'DRAFT', label: 'Drafts' },
+                        { id: 'OUT_OF_STOCK', label: 'Out of Stock' }
+                    ].map((f) => (
                         <TouchableOpacity
-                            key={f}
-                            onPress={() => setActiveFilter(f as FilterType)}
-                            className={`${activeFilter === f ? 'bg-black' : 'bg-gray-100'} px-6 py-2.5 rounded-full`}
+                            key={f.id}
+                            onPress={() => setActiveFilter(f.id as FilterType)}
+                            className={`px-5 py-2 rounded-full border ${activeFilter === f.id ? 'bg-gray-900 border-gray-900' : 'bg-white border-gray-200'}`}
                         >
-                            <Text className={`${activeFilter === f ? 'text-white' : 'text-gray-600'} font-black text-xs uppercase tracking-tight`}>
-                                {f.replace(/_/g, ' ')}
+                            <Text className={`font-semibold text-[11px] ${activeFilter === f.id ? 'text-white' : 'text-gray-500'}`}>
+                                {f.label}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -437,14 +439,11 @@ export default function ProductsManagement() {
                                         <Text className="ml-2 font-black text-xs uppercase">Edit</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        onPress={() => {
-                                            setMenuVisible(null);
-                                            router.replace('/Productadmin/inventory');
-                                        }}
+                                        onPress={() => setMenuVisible(null)}
                                         className="flex-1 items-center py-3 bg-gray-50 rounded-2xl mr-2 flex-row justify-center"
                                     >
-                                        <Ionicons name="layers-outline" size={18} color="black" />
-                                        <Text className="ml-2 font-black text-xs uppercase">Stock</Text>
+                                        <Ionicons name="layers-outline" size={18} color="#9ca3af" />
+                                        <Text className="ml-2 font-black text-xs uppercase text-gray-400">Stock</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={() => deleteProduct(product)}
@@ -477,174 +476,346 @@ export default function ProductsManagement() {
 
                     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
                         <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
-                            {/* Images Section */}
-                            <Text className="text-black font-black text-xs uppercase mb-3">Product Media (Max 5)</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
-                                <TouchableOpacity
-                                    onPress={handlePickImage}
-                                    className="w-24 h-24 bg-gray-50 border-2 border-dashed border-gray-100 rounded-[32px] items-center justify-center mr-4"
-                                >
-                                    <View className="bg-white w-10 h-10 rounded-full items-center justify-center shadow-sm mb-1">
-                                        <Ionicons name="camera" size={20} color="#ea580c" />
+                            {/* ========== SECTION 1: PRODUCT MEDIA ========== */}
+                            <View className="mb-8">
+                                <View className="flex-row items-center mb-4">
+                                    <View className="bg-orange-50 w-8 h-8 rounded-xl items-center justify-center mr-3">
+                                        <Ionicons name="images" size={16} color="#ea580c" />
                                     </View>
-                                    <Text className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Add Media</Text>
-                                </TouchableOpacity>
-                                {selectedImages.map((uri, idx) => (
-                                    <View key={idx} className="relative mr-4">
-                                        <Image
-                                            source={{ uri: uri.startsWith('/') ? `${BASE_URL}${uri}` : uri }}
-                                            className="w-24 h-24 rounded-[32px] bg-gray-50 border border-gray-100"
-                                        />
-                                        <TouchableOpacity
-                                            onPress={() => setSelectedImages(selectedImages.filter((_, i) => i !== idx))}
-                                            className="absolute -top-1 -right-1 bg-black w-6 h-6 rounded-full items-center justify-center border-2 border-white shadow-sm"
-                                        >
-                                            <Ionicons name="close" size={12} color="white" />
-                                        </TouchableOpacity>
+                                    <View className="flex-1">
+                                        <Text className="text-black font-black text-sm uppercase tracking-tight">Product Media</Text>
+                                        <Text className="text-gray-400 text-[10px] font-medium">Upload up to 5 images</Text>
                                     </View>
-                                ))}
-                            </ScrollView>
+                                </View>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    <TouchableOpacity
+                                        onPress={handlePickImage}
+                                        className="w-28 h-28 bg-gray-50 border-2 border-dashed border-gray-200 rounded-[28px] items-center justify-center mr-4"
+                                    >
+                                        <View className="bg-white w-12 h-12 rounded-full items-center justify-center shadow-sm mb-2">
+                                            <Ionicons name="camera" size={22} color="#ea580c" />
+                                        </View>
+                                        <Text className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">Add Photo</Text>
+                                    </TouchableOpacity>
+                                    {selectedImages.map((uri, idx) => (
+                                        <View key={idx} className="relative mr-4">
+                                            <Image
+                                                source={{ uri: uri.startsWith('/') ? `${BASE_URL}${uri}` : uri }}
+                                                className="w-28 h-28 rounded-[28px] bg-gray-50 border-2 border-gray-100"
+                                            />
+                                            <TouchableOpacity
+                                                onPress={() => setSelectedImages(selectedImages.filter((_, i) => i !== idx))}
+                                                className="absolute -top-1.5 -right-1.5 bg-black/90 w-8 h-8 rounded-full items-center justify-center shadow-xl border border-white/20"
+                                                activeOpacity={0.7}
+                                            >
+                                                <Ionicons name="close" size={18} color="white" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </ScrollView>
+                            </View>
 
-                            <View className="space-y-4 mb-20">
-                                <View>
-                                    <Text className="text-black font-black text-xs uppercase mb-2 ml-1">Identity</Text>
+                            {/* Divider */}
+                            <View className="h-[1px] bg-gray-100 mb-8" />
+
+                            {/* ========== SECTION 2: BASIC INFORMATION ========== */}
+                            <View className="mb-8">
+                                <View className="flex-row items-center mb-5">
+                                    <View className="bg-indigo-50 w-8 h-8 rounded-xl items-center justify-center mr-3">
+                                        <Ionicons name="information-circle" size={16} color="#4f46e5" />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-black font-black text-sm uppercase tracking-tight">Basic Information</Text>
+                                        <Text className="text-gray-400 text-[10px] font-medium">Product identity & pricing</Text>
+                                    </View>
+                                </View>
+
+                                {/* Product Name */}
+                                <View className="mb-5">
+                                    <Text className="text-gray-700 font-bold text-xs uppercase mb-2 ml-1 tracking-wide">Product Name *</Text>
                                     <TextInput
-                                        placeholder="Product Name *"
+                                        placeholder="e.g., 22K Gold Necklace"
+                                        placeholderTextColor="#9ca3af"
                                         value={formData.name}
                                         onChangeText={t => setFormData({ ...formData, name: t })}
-                                        className="bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold"
+                                        className="bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 font-semibold text-base text-black"
                                     />
                                 </View>
 
-                                <View className="flex-row space-x-3">
+                                {/* SKU & Price Row */}
+                                <View className="flex-row mb-5" style={{ gap: 12 }}>
                                     <View className="flex-1">
-                                        <Text className="text-black font-black text-xs uppercase mb-2 ml-1">SKU *</Text>
+                                        <Text className="text-gray-700 font-bold text-xs uppercase mb-2 ml-1 tracking-wide">SKU Code *</Text>
                                         <TextInput
                                             placeholder="JC-GOLD-001"
+                                            placeholderTextColor="#9ca3af"
                                             value={formData.sku}
                                             onChangeText={t => setFormData({ ...formData, sku: t })}
-                                            className="bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold"
+                                            className="bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 font-semibold text-base text-black"
                                         />
                                     </View>
                                     <View className="flex-1">
-                                        <Text className="text-black font-black text-xs uppercase mb-2 ml-1">Price (₹) *</Text>
+                                        <Text className="text-gray-700 font-bold text-xs uppercase mb-2 ml-1 tracking-wide">Price (₹) *</Text>
                                         <TextInput
-                                            placeholder="59999"
+                                            placeholder="59,999"
+                                            placeholderTextColor="#9ca3af"
                                             keyboardType="numeric"
                                             value={formData.price}
                                             onChangeText={t => setFormData({ ...formData, price: t })}
-                                            className="bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold"
+                                            className="bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 font-semibold text-base text-black"
                                         />
                                     </View>
                                 </View>
 
+                                {/* Category */}
                                 <View>
-                                    <Text className="text-black font-black text-xs uppercase mb-2 ml-1">Category *</Text>
-                                    <View className="bg-gray-50 border border-gray-100 rounded-2xl overflow-hidden">
-                                        {categories.map((cat) => (
+                                    <Text className="text-gray-700 font-bold text-xs uppercase mb-3 ml-1 tracking-wide">Product Category *</Text>
+                                    <View className="bg-white border-2 border-gray-100 rounded-2xl overflow-hidden">
+                                        {categories.map((cat, index) => (
                                             <TouchableOpacity
                                                 key={cat._id}
                                                 onPress={() => setFormData({ ...formData, category: cat._id })}
-                                                className={`p-4 border-b border-gray-100 flex-row justify-between items-center ${formData.category === cat._id ? 'bg-orange-50' : ''}`}
+                                                className={`px-5 py-4 flex-row justify-between items-center ${index !== categories.length - 1 ? 'border-b border-gray-50' : ''
+                                                    } ${formData.category === cat._id ? 'bg-orange-50' : 'bg-white'}`}
                                             >
-                                                <Text className={`font-bold ${formData.category === cat._id ? 'text-orange-600' : 'text-black'}`}>{cat.name}</Text>
-                                                {formData.category === cat._id && <Ionicons name="checkmark-circle" size={20} color="#ea580c" />}
+                                                <Text className={`font-bold text-base ${formData.category === cat._id ? 'text-orange-600' : 'text-gray-900'}`}>
+                                                    {cat.name}
+                                                </Text>
+                                                {formData.category === cat._id && (
+                                                    <View className="bg-orange-600 w-6 h-6 rounded-full items-center justify-center">
+                                                        <Ionicons name="checkmark" size={16} color="white" />
+                                                    </View>
+                                                )}
                                             </TouchableOpacity>
                                         ))}
                                     </View>
                                 </View>
-
-                                <View>
-                                    <Text className="text-black font-black text-xs uppercase mb-2 ml-1">Metal Specifications</Text>
-                                    <View className="flex-row space-x-3">
-                                        <View className="flex-1">
-                                            <TextInput
-                                                placeholder="Metal (GOLD)"
-                                                value={formData.metalType}
-                                                onChangeText={t => setFormData({ ...formData, metalType: t })}
-                                                className="bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-gray-900"
-                                            />
-                                        </View>
-                                        <View className="flex-1">
-                                            <TextInput
-                                                placeholder="Purity (22K)"
-                                                value={formData.purity}
-                                                onChangeText={t => setFormData({ ...formData, purity: t })}
-                                                className="bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-gray-900"
-                                            />
-                                        </View>
-                                        <View className="flex-1">
-                                            <TextInput
-                                                placeholder="Weight (g)"
-                                                keyboardType="numeric"
-                                                value={formData.weight}
-                                                onChangeText={t => setFormData({ ...formData, weight: t })}
-                                                className="bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-gray-900"
-                                            />
-                                        </View>
-                                    </View>
-                                </View>
-
-                                <View>
-                                    <View className="flex-row justify-between items-center mb-3">
-                                        <Text className="text-black font-black text-xs uppercase ml-1">Inventory Management</Text>
-                                        <View className="bg-orange-600/10 px-3 py-1 rounded-full">
-                                            <Text className="text-orange-600 text-[10px] font-black uppercase tracking-tighter">Stock Adjustment</Text>
-                                        </View>
-                                    </View>
-                                    <View className="bg-gray-900 rounded-[32px] p-6 flex-row items-center justify-between shadow-lg shadow-black/10">
-                                        <View>
-                                            <Text className="text-white/40 text-[9px] font-black uppercase tracking-[2px] mb-1">Available Units</Text>
-                                            <Text className="text-3xl font-black text-white">{formData.initialStock || '0'}</Text>
-                                        </View>
-                                        <View className="flex-row items-center bg-white/10 p-1.5 rounded-full border border-white/5">
-                                            <TouchableOpacity
-                                                onPress={() => setFormData({ ...formData, initialStock: Math.max(0, parseInt(formData.initialStock || '0') - 1).toString() })}
-                                                className="w-12 h-12 bg-white rounded-full items-center justify-center shadow-sm"
-                                            >
-                                                <Ionicons name="remove" size={24} color="#111827" />
-                                            </TouchableOpacity>
-                                            <View className="px-6">
-                                                <Ionicons name="cube-outline" size={20} color="rgba(255,255,255,0.2)" />
-                                            </View>
-                                            <TouchableOpacity
-                                                onPress={() => setFormData({ ...formData, initialStock: (parseInt(formData.initialStock || '0') + 1).toString() })}
-                                                className="w-12 h-12 bg-white rounded-full items-center justify-center shadow-sm"
-                                            >
-                                                <Ionicons name="add" size={24} color="#111827" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                </View>
-
-                                <View>
-                                    <Text className="text-black font-black text-xs uppercase mb-2 ml-1">Description</Text>
-                                    <TextInput
-                                        placeholder="Product details and story..."
-                                        multiline
-                                        numberOfLines={4}
-                                        value={formData.description}
-                                        onChangeText={t => setFormData({ ...formData, description: t })}
-                                        className="bg-gray-50 border border-gray-100 rounded-2xl p-4 font-medium min-h-[120px]"
-                                        textAlignVertical="top"
-                                    />
-                                </View>
-
-                                <TouchableOpacity
-                                    onPress={handleSubmit}
-                                    disabled={submitting}
-                                    className="bg-orange-600 py-5 rounded-[24px] items-center shadow-xl shadow-orange-600/30"
-                                >
-                                    {submitting ? (
-                                        <ActivityIndicator color="white" />
-                                    ) : (
-                                        <Text className="text-white font-black text-lg uppercase tracking-widest">
-                                            {editMode ? 'Update Catalog' : 'Publish Product'}
-                                        </Text>
-                                    )}
-                                </TouchableOpacity>
-                                <View className="h-20" />
                             </View>
+
+                            {/* Divider */}
+                            <View className="h-[1px] bg-gray-100 mb-8" />
+
+                            {/* ========== SECTION 3: METAL SPECIFICATIONS ========== */}
+                            <View className="mb-8">
+                                <View className="flex-row items-center mb-5">
+                                    <View className="bg-yellow-50 w-8 h-8 rounded-xl items-center justify-center mr-3">
+                                        <Ionicons name="diamond" size={16} color="#eab308" />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-black font-black text-sm uppercase tracking-tight">Metal Specifications</Text>
+                                        <Text className="text-gray-400 text-[10px] font-medium">Purity, weight & metal type</Text>
+                                    </View>
+                                </View>
+
+                                {/* Metal Type Dropdown */}
+                                <View className="mb-4">
+                                    <Text className="text-gray-700 font-bold text-xs uppercase mb-3 ml-1 tracking-wide">Metal Type *</Text>
+
+                                    {/* Selected Value Display / Dropdown Trigger */}
+                                    <TouchableOpacity
+                                        onPress={() => setMetalDropdownOpen(!metalDropdownOpen)}
+                                        className="bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 flex-row justify-between items-center"
+                                        activeOpacity={0.7}
+                                    >
+                                        <View className="flex-row items-center">
+                                            <View className={`w-3 h-3 rounded-full mr-3 ${formData.metalType === 'GOLD' ? 'bg-yellow-500' :
+                                                formData.metalType === 'SILVER' ? 'bg-gray-300' :
+                                                    formData.metalType === 'PLATINUM' ? 'bg-gray-400' :
+                                                        'bg-gray-200'
+                                                }`} />
+                                            <Text className="font-bold text-base text-gray-900">
+                                                {formData.metalType ? formData.metalType.charAt(0) + formData.metalType.slice(1).toLowerCase() : 'Gold'}
+                                            </Text>
+                                        </View>
+                                        <Ionicons
+                                            name={metalDropdownOpen ? "chevron-up" : "chevron-down"}
+                                            size={20}
+                                            color="#6b7280"
+                                        />
+                                    </TouchableOpacity>
+
+                                    {/* Dropdown Options (only shown when open) */}
+                                    {metalDropdownOpen && (
+                                        <View className="bg-white border-2 border-gray-100 rounded-2xl overflow-hidden mt-2">
+                                            {['GOLD', 'SILVER', 'PLATINUM', 'OTHERS'].map((metal, index) => (
+                                                <TouchableOpacity
+                                                    key={metal}
+                                                    onPress={() => {
+                                                        setFormData({ ...formData, metalType: metal });
+                                                        setMetalDropdownOpen(false);
+                                                    }}
+                                                    className={`px-5 py-4 flex-row justify-between items-center ${index !== 3 ? 'border-b border-gray-50' : ''
+                                                        } ${formData.metalType === metal ? 'bg-yellow-50' : 'bg-white'}`}
+                                                >
+                                                    <View className="flex-row items-center">
+                                                        <View className={`w-3 h-3 rounded-full mr-3 ${metal === 'GOLD' ? 'bg-yellow-500' :
+                                                            metal === 'SILVER' ? 'bg-gray-300' :
+                                                                metal === 'PLATINUM' ? 'bg-gray-400' :
+                                                                    'bg-gray-200'
+                                                            }`} />
+                                                        <Text className={`font-bold text-base ${formData.metalType === metal ? 'text-yellow-700' : 'text-gray-900'}`}>
+                                                            {metal.charAt(0) + metal.slice(1).toLowerCase()}
+                                                        </Text>
+                                                    </View>
+                                                    {formData.metalType === metal && (
+                                                        <Ionicons name="checkmark-circle" size={20} color="#eab308" />
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    )}
+                                </View>
+
+                                {/* Purity & Weight Row */}
+                                <View className="flex-row mb-5" style={{ gap: 12 }}>
+                                    <View className="flex-1">
+                                        <Text className="text-gray-700 font-bold text-xs uppercase mb-2 ml-1 tracking-wide">Purity *</Text>
+                                        <TextInput
+                                            placeholder="e.g., 22K or 916"
+                                            placeholderTextColor="#9ca3af"
+                                            value={formData.purity}
+                                            onChangeText={t => setFormData({ ...formData, purity: t })}
+                                            className="bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 font-semibold text-base text-black"
+                                        />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-gray-700 font-bold text-xs uppercase mb-2 ml-1 tracking-wide">Weight (g) *</Text>
+                                        <TextInput
+                                            placeholder="10.5"
+                                            placeholderTextColor="#9ca3af"
+                                            keyboardType="numeric"
+                                            value={formData.weight}
+                                            onChangeText={t => setFormData({ ...formData, weight: t })}
+                                            className="bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 font-semibold text-base text-black"
+                                        />
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* Divider */}
+                            <View className="h-[1px] bg-gray-100 mb-8" />
+
+                            {/* ========== SECTION 4: INVENTORY CONTROL ========== */}
+                            <View className="mb-8">
+                                <View className="flex-row items-center mb-5">
+                                    <View className="bg-green-50 w-8 h-8 rounded-xl items-center justify-center mr-3">
+                                        <Ionicons name="cube" size={16} color="#16a34a" />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-black font-black text-sm uppercase tracking-tight">Inventory Control</Text>
+                                        <Text className="text-gray-400 text-[10px] font-medium">Set initial stock quantity</Text>
+                                    </View>
+                                </View>
+
+                                <View className="bg-white border-2 border-gray-100 rounded-[28px] p-6">
+                                    {/* Stock Display */}
+                                    <View className="items-center mb-6">
+                                        <Text className="text-gray-500 text-xs font-bold uppercase tracking-wide mb-3">Available Units</Text>
+                                        <View className="bg-gray-50 rounded-3xl px-8 py-4 border-2 border-gray-100">
+                                            <Text className="text-6xl font-black text-gray-900 text-center">{formData.initialStock || '0'}</Text>
+                                        </View>
+                                        <Text className="text-gray-400 text-xs font-medium mt-3">Units in Stock</Text>
+                                    </View>
+
+                                    {/* Counter Controls */}
+                                    <View className="flex-row items-center justify-center" style={{ gap: 16 }}>
+                                        <TouchableOpacity
+                                            onPress={() => setFormData({ ...formData, initialStock: Math.max(0, parseInt(formData.initialStock || '0') - 1).toString() })}
+                                            className="bg-red-500 w-16 h-16 rounded-2xl items-center justify-center shadow-lg shadow-red-500/30"
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons name="remove" size={32} color="white" />
+                                        </TouchableOpacity>
+
+                                        <View className="bg-gray-100 px-6 py-3 rounded-2xl">
+                                            <Ionicons name="cube" size={28} color="#6b7280" />
+                                        </View>
+
+                                        <TouchableOpacity
+                                            onPress={() => setFormData({ ...formData, initialStock: (parseInt(formData.initialStock || '0') + 1).toString() })}
+                                            className="bg-green-500 w-16 h-16 rounded-2xl items-center justify-center shadow-lg shadow-green-500/30"
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons name="add" size={32} color="white" />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    {/* Quick Add Buttons */}
+                                    <View className="mt-6 pt-6 border-t border-gray-100">
+                                        <Text className="text-gray-500 text-xs font-bold uppercase tracking-wide mb-3 text-center">Quick Add</Text>
+                                        <View className="flex-row justify-center" style={{ gap: 8 }}>
+                                            {[10, 25, 50, 100].map((amount) => (
+                                                <TouchableOpacity
+                                                    key={amount}
+                                                    onPress={() => setFormData({ ...formData, initialStock: (parseInt(formData.initialStock || '0') + amount).toString() })}
+                                                    className="bg-gray-100 px-4 py-2.5 rounded-xl"
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text className="text-gray-700 font-black text-sm">+{amount}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+
+                                        {/* Reset Button */}
+                                        <TouchableOpacity
+                                            onPress={() => setFormData({ ...formData, initialStock: '0' })}
+                                            className="mt-4 bg-red-50 border-2 border-red-100 py-3 rounded-2xl flex-row items-center justify-center"
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons name="trash-outline" size={18} color="#dc2626" style={{ marginRight: 8 }} />
+                                            <Text className="text-red-600 font-black text-xs uppercase tracking-wide">Reset to Zero</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* Divider */}
+                            <View className="h-[1px] bg-gray-100 mb-8" />
+
+                            {/* ========== SECTION 5: PRODUCT DESCRIPTION ========== */}
+                            <View className="mb-8">
+                                <View className="flex-row items-center mb-5">
+                                    <View className="bg-purple-50 w-8 h-8 rounded-xl items-center justify-center mr-3">
+                                        <Ionicons name="document-text" size={16} color="#9333ea" />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-black font-black text-sm uppercase tracking-tight">Product Description</Text>
+                                        <Text className="text-gray-400 text-[10px] font-medium">Tell the product story</Text>
+                                    </View>
+                                </View>
+
+                                <TextInput
+                                    placeholder="Describe the product features, craftsmanship, and unique selling points..."
+                                    placeholderTextColor="#9ca3af"
+                                    multiline
+                                    numberOfLines={5}
+                                    value={formData.description}
+                                    onChangeText={t => setFormData({ ...formData, description: t })}
+                                    className="bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 font-medium text-base text-gray-900 min-h-[140px]"
+                                    textAlignVertical="top"
+                                />
+                            </View>
+
+                            {/* Submit Button */}
+                            <TouchableOpacity
+                                onPress={handleSubmit}
+                                disabled={submitting}
+                                className="bg-orange-600 py-6 rounded-[28px] items-center shadow-2xl shadow-orange-600/40 mb-6"
+                                style={{ elevation: 8 }}
+                            >
+                                {submitting ? (
+                                    <ActivityIndicator color="white" size="small" />
+                                ) : (
+                                    <View className="flex-row items-center">
+                                        <Ionicons name={editMode ? "checkmark-circle" : "rocket"} size={24} color="white" style={{ marginRight: 12 }} />
+                                        <Text className="text-white font-black text-base uppercase tracking-widest">
+                                            {editMode ? 'Update Product' : 'Publish Product'}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            <View className="h-24" />
                         </ScrollView>
                     </KeyboardAvoidingView>
                 </SafeAreaView>
