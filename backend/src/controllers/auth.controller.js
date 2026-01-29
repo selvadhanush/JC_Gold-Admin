@@ -2,6 +2,7 @@ const Admin = require('../models/Admin');
 const Role = require('../models/Role');
 const ErrorResponse = require('../utils/errorResponse');
 const generateToken = require('../utils/generateToken');
+const jwt = require('jsonwebtoken');
 
 // @desc    Admin login
 // @route   POST /api/v1/auth/login
@@ -53,11 +54,18 @@ exports.login = async (req, res, next) => {
         await admin.save();
 
         const token = generateToken(admin._id);
-        console.log('✅ Login successful, token generated');
+        const refreshToken = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+
+        // Store refresh token
+        admin.refreshToken = refreshToken;
+        await admin.save();
+
+        console.log('✅ Login successful, tokens generated');
 
         res.status(200).json({
             success: true,
             token,
+            refreshToken,
             admin: {
                 id: admin._id,
                 name: admin.name,
@@ -68,6 +76,37 @@ exports.login = async (req, res, next) => {
     } catch (err) {
         console.error('💥 Login error:', err);
         next(err);
+    }
+};
+
+// @desc    Refresh admin token
+// @route   POST /api/v1/auth/refresh
+// @access  Public
+exports.refresh = async (req, res, next) => {
+    try {
+        const { refreshToken } = req.body;
+        if (!refreshToken) return next(new ErrorResponse('Refresh token required', 401));
+
+        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        const admin = await Admin.findById(decoded.id).select('+refreshToken');
+
+        if (!admin || admin.refreshToken !== refreshToken) {
+            return next(new ErrorResponse('Invalid refresh token', 401));
+        }
+
+        const newToken = generateToken(admin._id);
+        const newRefreshToken = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+
+        admin.refreshToken = newRefreshToken;
+        await admin.save();
+
+        res.status(200).json({
+            success: true,
+            token: newToken,
+            refreshToken: newRefreshToken
+        });
+    } catch (err) {
+        return next(new ErrorResponse('Session expired', 401));
     }
 };
 

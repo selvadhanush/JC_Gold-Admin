@@ -9,7 +9,8 @@ const {
     getRedemptions,
     getTransactions,
     markReadyForPickup,
-    markAsCollected
+    markAsCollected,
+    adjustUserGold
 } = require('../controllers/adminDigitalGold.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const { authorize } = require('../middlewares/role.middleware');
@@ -17,7 +18,8 @@ const validate = require('../middlewares/validate.middleware');
 const { logAction } = require('../middlewares/audit.middleware');
 const {
     goldRateValidation,
-    approveTransactionValidation
+    approveTransactionValidation,
+    adjustVaultValidation
 } = require('../validations/digitalGold.validation');
 
 const router = express.Router();
@@ -41,5 +43,7 @@ router.get('/transactions', authorize('SUPER_ADMIN', 'FINANCE_ADMIN', 'ORDER_ADM
 // Physical gold workflow routes
 router.put('/redemption/ready-for-pickup/:id', authorize('SUPER_ADMIN', 'FINANCE_ADMIN', 'ORDER_ADMIN'), logAction('MARK_GOLD_READY_FOR_PICKUP', 'DIGITAL_GOLD'), markReadyForPickup);
 router.put('/redemption/mark-collected/:id', authorize('SUPER_ADMIN', 'FINANCE_ADMIN', 'ORDER_ADMIN'), logAction('MARK_GOLD_COLLECTED', 'DIGITAL_GOLD'), markAsCollected);
+
+router.post('/adjust-vault', authorize('SUPER_ADMIN', 'ORDER_ADMIN'), validate(adjustVaultValidation), logAction('ADJUST_USER_GOLD_VAULT', 'DIGITAL_GOLD'), adjustUserGold);
 
 module.exports = router;

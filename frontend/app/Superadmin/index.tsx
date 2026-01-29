@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { TextInput, ActivityIndicator } from 'react-native';
 import { API_ENDPOINTS, getAuthHeaders, BASE_URL } from '../../api';
 import * as SecureStore from 'expo-secure-store';
 import { Skeleton } from '../../components/Skeleton';
@@ -37,6 +38,10 @@ export default function SuperAdminDashboard() {
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [userData, setUserData] = useState<any>(null);
     const [openTickets, setOpenTickets] = useState(0);
+    const [shopAddress, setShopAddress] = useState('Loading address...');
+    const [isEditingAddress, setIsEditingAddress] = useState(false);
+    const [tempAddress, setTempAddress] = useState('');
+    const [isSavingAddress, setIsSavingAddress] = useState(false);
 
     // Animations
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -46,6 +51,7 @@ export default function SuperAdminDashboard() {
         fetchDashboardData();
         loadUserData();
         fetchOpenTickets();
+        fetchShopAddress();
     }, []);
 
     const loadUserData = async () => {
@@ -101,6 +107,48 @@ export default function SuperAdminDashboard() {
             }
         } catch (error) {
             console.error('Failed to fetch ticket count');
+        }
+    };
+
+    const fetchShopAddress = async () => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.SUPER_SETTINGS, { headers });
+            const data = await response.json();
+            if (data.success) {
+                const addressConfig = data.data.find((s: any) => s.key === 'SHOP_ADDRESS');
+                if (addressConfig) {
+                    setShopAddress(addressConfig.value);
+                    setTempAddress(addressConfig.value);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch shop address');
+        }
+    };
+
+    const handleSaveAddress = async () => {
+        setIsSavingAddress(true);
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.SUPER_SETTINGS, {
+                method: 'PATCH',
+                headers,
+                body: JSON.stringify({
+                    settings: [{ key: 'SHOP_ADDRESS', value: tempAddress }]
+                }),
+            });
+
+            if (response.ok) {
+                setShopAddress(tempAddress);
+                setIsEditingAddress(false);
+            } else {
+                console.error('Failed to save address');
+            }
+        } catch (error) {
+            console.error('Error saving address:', error);
+        } finally {
+            setIsSavingAddress(false);
         }
     };
 
@@ -355,11 +403,11 @@ export default function SuperAdminDashboard() {
                                 style={{ width: (width - 60) / 2 }}
                             >
                                 <View className="bg-black w-12 h-12 rounded-2xl items-center justify-center mb-4 shadow-lg shadow-black/20">
-                                    <Ionicons name="people-circle" size={24} color="white" />
+                                    <Ionicons name="people" size={24} color="white" />
                                 </View>
-                                <Text className="text-black font-black text-base">Buyers</Text>
+                                <Text className="text-black font-black text-base">Users</Text>
                                 <Text className="text-gray-900 text-xl font-black">{stats?.buyers?.active || 0}</Text>
-                                <Text className="text-gray-400 text-[10px] font-bold uppercase">Registered</Text>
+                                <Text className="text-gray-400 text-[10px] font-bold uppercase">Management</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -380,6 +428,22 @@ export default function SuperAdminDashboard() {
                                     <Text className="text-gray-500 text-xs font-medium">Trace all system activity</Text>
                                 </View>
                                 <Ionicons name="arrow-forward-circle" size={32} color="#000" />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => router.push('/Superadmin/manage_users')}
+                                className="bg-black rounded-[32px] p-6 shadow-sm flex-row items-center"
+                            >
+                                <View className="bg-white/10 w-14 h-14 rounded-2xl items-center justify-center">
+                                    <Ionicons name="people-sharp" size={28} color="#fbbf24" />
+                                </View>
+                                <View className="ml-5 flex-1">
+                                    <Text className="text-white font-black text-lg">User Management</Text>
+                                    <Text className="text-white/50 text-xs font-medium">Manage vaults, KYC & accounts</Text>
+                                </View>
+                                <View className="bg-yellow-500 w-10 h-10 rounded-full items-center justify-center">
+                                    <Ionicons name="chevron-forward" size={20} color="black" />
+                                </View>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -423,6 +487,72 @@ export default function SuperAdminDashboard() {
                                 </View>
                                 <Ionicons name="arrow-forward-circle" size={32} color="#000" />
                             </TouchableOpacity>
+
+                            {/* Editable Shop Address Section */}
+                            <View className="bg-black rounded-[32px] p-8 shadow-2xl relative overflow-hidden mt-6">
+                                <View className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full" />
+                                <View className="flex-row justify-between items-center mb-6">
+                                    <View className="bg-white/10 w-12 h-12 rounded-2xl items-center justify-center">
+                                        <Ionicons name="location" size={24} color="#fbbf24" />
+                                    </View>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            if (isEditingAddress) {
+                                                handleSaveAddress();
+                                            } else {
+                                                setIsEditingAddress(true);
+                                            }
+                                        }}
+                                        disabled={isSavingAddress}
+                                        className="bg-white/10 px-4 py-2 rounded-full border border-white/20 flex-row items-center"
+                                    >
+                                        {isSavingAddress ? (
+                                            <ActivityIndicator size="small" color="#fbbf24" />
+                                        ) : (
+                                            <>
+                                                <Text className="text-white text-[10px] font-black uppercase tracking-widest mr-2">
+                                                    {isEditingAddress ? 'Save Changes' : 'Edit Address'}
+                                                </Text>
+                                                <Ionicons name={isEditingAddress ? "checkmark-circle" : "pencil"} size={14} color="#fbbf24" />
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+
+                                <Text className="text-white font-black text-xl mb-4">Showroom Location</Text>
+
+                                {isEditingAddress ? (
+                                    <View className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                                        <TextInput
+                                            multiline
+                                            value={tempAddress}
+                                            onChangeText={setTempAddress}
+                                            placeholder="Enter address..."
+                                            placeholderTextColor="#9ca3af"
+                                            style={{ color: 'white', minHeight: 80, textAlignVertical: 'top' }}
+                                            className="font-bold text-sm leading-5"
+                                        />
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                setIsEditingAddress(false);
+                                                setTempAddress(shopAddress);
+                                            }}
+                                            className="mt-4 self-end"
+                                        >
+                                            <Text className="text-white/40 text-[10px] font-black uppercase">Cancel</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <Text className="text-white/60 text-sm leading-6">
+                                        {shopAddress}
+                                    </Text>
+                                )}
+
+                                <View className="mt-8 flex-row items-center">
+                                    <View className="w-1.5 h-1.5 rounded-full bg-yellow-500 mr-2" />
+                                    <Text className="text-white/40 font-black text-[10px] uppercase tracking-widest">Global Storefront Visibility</Text>
+                                </View>
+                            </View>
                         </View>
                     </View>
                 </Animated.View>

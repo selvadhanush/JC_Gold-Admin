@@ -64,6 +64,9 @@ export default function MpinVerification() {
                 if (data.token) {
                     await SecureStore.setItemAsync('userToken', data.token);
                 }
+                if (data.refreshToken) {
+                    await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+                }
 
                 showToast.success('Welcome back! ✨');
 

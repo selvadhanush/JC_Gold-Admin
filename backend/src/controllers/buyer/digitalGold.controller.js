@@ -7,6 +7,22 @@ const { getCurrentGoldRate, convertToGrams } = require('../../utils/goldConversi
 const { notifyAdmins } = require('../../utils/notification');
 const { redeemGoldFIFO, calculatePortfolioSummary } = require('../../utils/goldLotHelper');
 const mongoose = require('mongoose');
+const Config = require('../../models/Config');
+
+// @desc    Get Shop Address
+// @route   GET /api/v1/buyer/digital-gold/shop-address
+// @access  Public/Buyer
+exports.getShopAddress = async (req, res, next) => {
+    try {
+        const config = await Config.findOne({ key: 'SHOP_ADDRESS' });
+        res.status(200).json({
+            success: true,
+            data: config ? config.value : 'Visit our JC Gold & Jewels showroom.'
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 
 // @desc    Buy digital gold
 // @route   POST /api/v1/buyer/digital-gold/buy

@@ -7,6 +7,7 @@ const Payment = require('../models/Payment');
 const Refund = require('../models/Refund');
 const ErrorResponse = require('../utils/errorResponse');
 const { notifyRecipient } = require('../utils/notification');
+const { redeemGoldFIFO } = require('../utils/goldLotHelper');
 const mongoose = require('mongoose');
 
 // @desc    Set gold rate
@@ -422,6 +423,111 @@ exports.markAsCollected = async (req, res, next) => {
             success: true,
             data: redemption
         });
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        next(err);
+    }
+};
+
+// @desc    Adjust user gold vault (Manual Add/Deduct)
+// @route   POST /api/v1/admin/digital-gold/adjust-vault
+// @access  Private (ORDER_ADMIN, SUPER_ADMIN)
+exports.adjustUserGold = async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { userId, type, goldGrams, goldRateAtTime, notes } = req.body;
+
+        const user = await User.findById(userId).session(session);
+        if (!user) {
+            return next(new ErrorResponse('User not found', 404));
+        }
+
+        let transaction;
+
+        if (type === 'ADD') {
+            // 1. Create a COMPLETED transaction
+            // Using OFFLINE as purchase method for shop visits
+            transaction = await DigitalGoldTransaction.create([{
+                user: userId,
+                type: 'BUY',
+                amountPaid: goldGrams * goldRateAtTime,
+                goldRateAtTime,
+                goldGrams,
+                status: 'COMPLETED',
+                paymentMethod: 'OFFLINE',
+                adminApprovedBy: req.admin._id,
+                approvalDate: Date.now(),
+                notes: notes || 'Manual addition by admin'
+            }], { session });
+
+            // 2. Create an ACTIVE gold lot
+            const lot = await GoldLot.create([{
+                user: userId,
+                purchaseTransaction: transaction[0]._id,
+                purchaseDate: Date.now(),
+                goldGrams,
+                remainingGrams: goldGrams,
+                pricePerGram: goldRateAtTime,
+                totalPaid: goldGrams * goldRateAtTime,
+                status: 'ACTIVE'
+            }], { session });
+
+            // 3. Link lot to transaction
+            transaction[0].lotsCreated = [lot[0]._id];
+            await transaction[0].save({ session });
+
+            // 4. Update user balance
+            user.wallet.goldBalance = Number(((user.wallet.goldBalance || 0) + goldGrams).toFixed(6));
+            await user.save({ session });
+
+        } else if (type === 'DEDUCT') {
+            // 1. Check if user has sufficient balance
+            if ((user.wallet.goldBalance || 0) < goldGrams) {
+                return next(new ErrorResponse('Insufficient user gold balance for deduction', 400));
+            }
+
+            // 2. Use FIFO to consume lots
+            const { lotsUsed } = await redeemGoldFIFO(userId, goldGrams, goldRateAtTime, session);
+
+            // 3. Create a COMPLETED redemption transaction
+            transaction = await DigitalGoldTransaction.create([{
+                user: userId,
+                type: 'REDEEM_PHYSICAL_GOLD', // Used for "decreasing gold" (shop collection/correction)
+                goldRateAtTime,
+                goldGrams,
+                lotsUsed,
+                status: 'COMPLETED',
+                adminApprovedBy: req.admin._id,
+                approvalDate: Date.now(),
+                notes: notes || 'Manual deduction by admin'
+            }], { session });
+
+            // 4. Update user balance
+            user.wallet.goldBalance = Number(((user.wallet.goldBalance || 0) - goldGrams).toFixed(6));
+            await user.save({ session });
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+
+        // Notify Buyer
+        await notifyRecipient(userId, 'User', {
+            title: `Gold Vault ${type === 'ADD' ? 'Credited' : 'Debited'}`,
+            message: type === 'ADD'
+                ? `An admin has added ${goldGrams}g gold to your vault.`
+                : `An admin has deducted ${goldGrams}g gold from your vault.`,
+            type: 'GOLD_TRANSACTION'
+        });
+
+        res.status(200).json({
+            success: true,
+            message: `Successfully ${type === 'ADD' ? 'added' : 'deducted'} gold.`,
+            data: transaction[0]
+        });
+
     } catch (err) {
         await session.abortTransaction();
         session.endSession();

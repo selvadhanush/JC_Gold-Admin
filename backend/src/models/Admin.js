@@ -33,6 +33,10 @@ const adminSchema = new mongoose.Schema({
     lastLogin: {
         type: Date,
     },
+    refreshToken: {
+        type: String,
+        select: false,
+    },
 }, { timestamps: true });
 
 // Encrypt password using bcrypt

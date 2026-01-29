@@ -33,7 +33,6 @@ export default function SuperAdminLayout() {
             <Tabs.Screen name="system_settings" options={{ title: 'System' }} />
             <Tabs.Screen name="admin_user_details" options={{ href: null, tabBarStyle: { display: 'none' } }} />
             <Tabs.Screen name="digital_gold_view" options={{ href: null, title: 'Digital Gold View' }} />
-            <Tabs.Screen name="gold_redemptions" options={{ href: null, title: 'Gold Redemptions' }} />
             <Tabs.Screen name="gold_rates" options={{ href: null, title: 'Gold Rates' }} />
             <Tabs.Screen name="cms_control" options={{ href: null, title: 'CMS Control' }} />
             <Tabs.Screen name="reports" options={{ href: null, title: 'Reports' }} />

@@ -8,6 +8,9 @@ import {
     Alert,
     Dimensions,
     StatusBar,
+    Modal,
+    TextInput,
+    Animated,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,9 +35,68 @@ export default function UserDetails() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'orders' | 'schemes'>('orders');
 
+    // Vault Management State
+    const [showVaultModal, setShowVaultModal] = useState(false);
+    const [adjustType, setAdjustType] = useState<'ADD' | 'DEDUCT'>('ADD');
+    const [goldGrams, setGoldGrams] = useState('');
+    const [goldRate, setGoldRate] = useState('');
+    const [currentMarketRate, setCurrentMarketRate] = useState<number | null>(null);
+    const [notes, setNotes] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isInsufficient, setIsInsufficient] = useState(false);
+
+    // Toast State
+    const [showToast, setShowToast] = useState(false);
+    const [toastMsg, setToastMsg] = useState('');
+    const [toastType, setToastType] = useState<'success' | 'error'>('success');
+    const toastAnim = useState(new Animated.Value(-100))[0];
+
+    const triggerToast = (msg: string, type: 'success' | 'error' = 'success') => {
+        setToastMsg(msg);
+        setToastType(type);
+        setShowToast(true);
+        Animated.spring(toastAnim, {
+            toValue: 20,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 7
+        }).start();
+
+        setTimeout(() => {
+            Animated.timing(toastAnim, {
+                toValue: -100,
+                duration: 500,
+                useNativeDriver: true
+            }).start(() => setShowToast(false));
+        }, 3000);
+    };
+
     useEffect(() => {
-        if (id) fetchUserDetails();
+        if (id) {
+            fetchUserDetails();
+            fetchCurrentGoldRate();
+        }
     }, [id]);
+
+    const fetchCurrentGoldRate = async () => {
+        try {
+            const response = await fetch(API_ENDPOINTS.ADMIN_DIGITAL_GOLD_DASHBOARD_RATES);
+            const data = await response.json();
+            if (data.success && Array.isArray(data.data)) {
+                // Find 24K Gold rate from the array
+                const gold24k = data.data.find((item: any) => item.metalType === 'GOLD' && item.purity === '24K');
+                if (gold24k && gold24k.rate) {
+                    const rate = gold24k.rate;
+                    setCurrentMarketRate(rate);
+                    if (!goldRate) setGoldRate(rate.toString());
+                } else {
+                    console.warn('24K Gold rate not found in dashboard data');
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch gold rate:', error);
+        }
+    };
 
     const fetchUserDetails = async () => {
         try {
@@ -54,9 +116,69 @@ export default function UserDetails() {
             if (schemeData.success) setSchemes(schemeData.data || []);
         } catch (error) {
             console.error('Fetch Details Error:', error);
-            Alert.alert('Error', 'Failed to fetch customer dossier');
+            triggerToast('Failed to fetch customer dossier', 'error');
         } finally {
             setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        const parsedGrams = parseFloat(goldGrams);
+        const currentBalance = user?.wallet?.goldBalance || 0;
+        if (adjustType === 'DEDUCT' && parsedGrams > currentBalance) {
+            setIsInsufficient(true);
+        } else {
+            setIsInsufficient(false);
+        }
+    }, [goldGrams, adjustType, user]);
+
+    const handleVaultAction = async () => {
+        const parsedGrams = parseFloat(goldGrams);
+        const parsedRate = parseFloat(goldRate) || currentMarketRate || 0;
+
+        if (!parsedGrams || parsedGrams <= 0) {
+            triggerToast('Please enter a valid amount of gold grams', 'error');
+            return;
+        }
+
+        if (!parsedRate || parsedRate <= 0) {
+            triggerToast('Please enter a valid gold rate', 'error');
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(API_ENDPOINTS.ADMIN_DIGITAL_GOLD_ADJUST_VAULT, {
+                method: 'POST',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    userId: id,
+                    type: adjustType,
+                    goldGrams: parsedGrams,
+                    goldRateAtTime: parsedRate,
+                    notes
+                }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                triggerToast(data.message || 'Vault adjusted successfully');
+                setShowVaultModal(false);
+                setGoldGrams('');
+                setGoldRate('');
+                setNotes('');
+                fetchUserDetails(); // Refresh data
+            } else {
+                triggerToast(data.message || 'Failed to adjust vault', 'error');
+            }
+        } catch (error) {
+            triggerToast('Network error occurred', 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -204,16 +326,53 @@ export default function UserDetails() {
                         {/* Action Column */}
                         <View className="items-center space-y-2 ml-4">
                             <TouchableOpacity
+                                onPress={() => {
+                                    setAdjustType('ADD');
+                                    setShowVaultModal(true);
+                                }}
+                                className="w-10 h-10 bg-orange-500 rounded-full items-center justify-center border border-orange-400 shadow-sm mb-2"
+                            >
+                                <Ionicons name="add" size={24} color="white" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
                                 onPress={fetchUserDetails}
                                 className="w-10 h-10 bg-gray-50 rounded-full items-center justify-center border border-gray-100"
                             >
                                 <Ionicons name="refresh" size={20} color="#6b7280" />
                             </TouchableOpacity>
-                            <TouchableOpacity className="w-10 h-10 bg-gray-50 rounded-full items-center justify-center border border-gray-100 opacity-50">
-                                <Ionicons name="ellipsis-horizontal" size={20} color="#6b7280" />
-                            </TouchableOpacity>
                         </View>
                     </View>
+                </View>
+
+                {/* Vault Info Card */}
+                <View className="mx-5 mb-6">
+                    <TouchableOpacity
+                        onPress={() => setShowVaultModal(true)}
+                        activeOpacity={0.9}
+                        style={{
+                            backgroundColor: '#111827',
+                            borderRadius: 24,
+                            padding: 20,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.1,
+                            shadowRadius: 10,
+                            elevation: 5
+                        }}
+                    >
+                        <View className="w-12 h-12 bg-orange-500 rounded-2xl items-center justify-center mr-4">
+                            <Ionicons name="cube" size={24} color="white" />
+                        </View>
+                        <View className="flex-1">
+                            <Text className="text-gray-400 font-black text-[9px] uppercase tracking-widest mb-1">User Gold Vault</Text>
+                            <Text className="text-white text-xl font-black">{user.wallet?.goldBalance?.toFixed(3) || '0.000'} <Text className="text-orange-500 text-sm">Grams</Text></Text>
+                        </View>
+                        <View className="bg-white/10 px-3 py-2 rounded-xl">
+                            <Text className="text-white font-black text-[9px] uppercase">Manage</Text>
+                        </View>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Statistics Grid */}
@@ -369,6 +528,150 @@ export default function UserDetails() {
                 </View>
 
             </ScrollView>
+
+            {/* Vault Management Modal */}
+            <Modal
+                visible={showVaultModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowVaultModal(false)}
+            >
+                <View className="flex-1 bg-black/60 justify-end">
+                    <View className="bg-white rounded-t-[40px] p-8 pb-10">
+                        <View className="flex-row justify-between items-center mb-6">
+                            <View>
+                                <Text className="text-orange-500 font-black text-[10px] uppercase tracking-widest mb-1">Vault Control</Text>
+                                <Text className="text-2xl font-black text-gray-900">Manage Gold</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setShowVaultModal(false)}>
+                                <Ionicons name="close-circle" size={32} color="#f3f4f6" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Toggle Type */}
+                        <View className="flex-row bg-gray-100 p-1.5 rounded-2xl mb-8">
+                            <TouchableOpacity
+                                onPress={() => setAdjustType('ADD')}
+                                style={[{ flex: 1, paddingVertical: 12, borderRadius: 14, alignItems: 'center' }, adjustType === 'ADD' ? { backgroundColor: 'white', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 } : {}]}
+                            >
+                                <Text className={`font-black text-[10px] uppercase tracking-widest ${adjustType === 'ADD' ? 'text-orange-600' : 'text-gray-400'}`}>Add Gold</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setAdjustType('DEDUCT')}
+                                style={[{ flex: 1, paddingVertical: 12, borderRadius: 14, alignItems: 'center' }, adjustType === 'DEDUCT' ? { backgroundColor: 'white', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 } : {}]}
+                            >
+                                <Text className={`font-black text-[10px] uppercase tracking-widest ${adjustType === 'DEDUCT' ? 'text-orange-600' : 'text-gray-400'}`}>Deduct Gold</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View className="space-y-4">
+                            <View>
+                                <Text className={`text-[10px] font-black uppercase tracking-widest ml-1 mb-2 ${isInsufficient ? 'text-red-500' : 'text-gray-400'}`}>
+                                    Gold Grams {isInsufficient && `(Max: ${user?.wallet?.goldBalance || 0}g)`}
+                                </Text>
+                                <View className={`bg-gray-50 border rounded-2xl px-5 py-4 flex-row items-center ${isInsufficient ? 'border-red-500 bg-red-50' : 'border-gray-100'}`}>
+                                    <TextInput
+                                        placeholder="0.00"
+                                        keyboardType="numeric"
+                                        className={`flex-1 font-black text-lg ${isInsufficient ? 'text-red-600' : 'text-gray-900'}`}
+                                        value={goldGrams}
+                                        onChangeText={setGoldGrams}
+                                    />
+                                    <Text className={isInsufficient ? 'text-red-400' : 'text-gray-400'}>GR</Text>
+                                </View>
+                            </View>
+
+                            <View className="mt-4">
+                                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2">
+                                    {adjustType === 'ADD' ? 'Purchase Rate' : 'Market Rate'} (Per Gram)
+                                </Text>
+                                <View className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 flex-row items-center">
+                                    <Text className="text-gray-400 font-black text-lg mr-2">₹</Text>
+                                    <TextInput
+                                        placeholder="0.00"
+                                        keyboardType="numeric"
+                                        className="flex-1 font-black text-lg text-gray-900"
+                                        value={goldRate}
+                                        onChangeText={setGoldRate}
+                                    />
+                                </View>
+                            </View>
+
+                            <View className="mt-4">
+                                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2">Notes / Reason</Text>
+                                <View className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4">
+                                    <TextInput
+                                        placeholder="Reason for adjustment..."
+                                        className="font-bold text-gray-900"
+                                        multiline
+                                        numberOfLines={3}
+                                        value={notes}
+                                        onChangeText={setNotes}
+                                    />
+                                </View>
+                            </View>
+
+                            {!isInsufficient && (
+                                <TouchableOpacity
+                                    onPress={handleVaultAction}
+                                    disabled={isSubmitting}
+                                    style={{
+                                        backgroundColor: adjustType === 'ADD' ? '#f97316' : '#111827',
+                                        borderRadius: 24,
+                                        paddingVertical: 18,
+                                        alignItems: 'center',
+                                        marginTop: 32,
+                                        shadowColor: adjustType === 'ADD' ? '#f97316' : '#000',
+                                        shadowOffset: { width: 0, height: 4 },
+                                        shadowOpacity: 0.2,
+                                        shadowRadius: 8,
+                                        elevation: 4
+                                    }}
+                                >
+                                    {isSubmitting ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : (
+                                        <Text className="text-white font-black text-base uppercase tracking-widest">
+                                            Confirm {adjustType === 'ADD' ? 'Addition' : 'Deduction'}
+                                        </Text>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+            {/* Animated Toast */}
+            {showToast && (
+                <Animated.View
+                    style={{
+                        position: 'absolute',
+                        top: 40,
+                        left: 20,
+                        right: 20,
+                        backgroundColor: toastType === 'success' ? '#10b981' : '#ef4444',
+                        borderRadius: 20,
+                        padding: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        transform: [{ translateY: toastAnim }],
+                        zIndex: 1000,
+                        shadowColor: toastType === 'success' ? '#10b981' : '#ef4444',
+                        shadowOffset: { width: 0, height: 10 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 20,
+                        elevation: 10
+                    }}
+                >
+                    <View className="bg-white/20 p-2 rounded-xl mr-4">
+                        <Ionicons name={toastType === 'success' ? "checkmark-circle" : "alert-circle"} size={24} color="white" />
+                    </View>
+                    <View className="flex-1">
+                        <Text className="text-white font-black text-sm uppercase tracking-wider">{toastType === 'success' ? 'Success' : 'Attention'}</Text>
+                        <Text className="text-white/90 text-xs font-bold">{toastMsg}</Text>
+                    </View>
+                </Animated.View>
+            )}
         </View>
     );
 }

@@ -24,48 +24,6 @@ export default function Login() {
     const [error, setError] = useState('');
     const [isNavigating, setIsNavigating] = useState(false);
 
-    React.useEffect(() => {
-        if (!isNavigating) {
-            checkStoredToken();
-        }
-    }, []);
-
-    const checkStoredToken = async () => {
-        try {
-            const token = await SecureStore.getItemAsync('userToken');
-            const userType = await SecureStore.getItemAsync('userType');
-            const userDataString = await SecureStore.getItemAsync('userData');
-
-            if (token && userType && userDataString) {
-                setIsNavigating(true);
-                const userData = JSON.parse(userDataString);
-
-                if (userType === 'admin') {
-                    const role = userData.role;
-                    switch (role) {
-                        case 'SUPER_ADMIN':
-                            router.replace('/Superadmin');
-                            break;
-                        case 'PRODUCT_ADMIN':
-                            router.replace('/Productadmin');
-                            break;
-                        case 'ORDER_ADMIN':
-                            router.replace('/Orderadmin');
-                            break;
-                        case 'FINANCE_ADMIN':
-                            router.replace('/Financeadmin');
-                            break;
-                        default:
-                            router.replace('/dashboard');
-                    }
-                } else {
-                    router.replace('/buyer_dashboard');
-                }
-            }
-        } catch (err) {
-            console.error('Error checking stored session:', err);
-        }
-    };
 
     const fetchWithTimeout = async (url: string, options: any, timeout = 15000) => {
         const controller = new AbortController();
@@ -108,8 +66,11 @@ export default function Login() {
                 const role = adminData.admin.role;
                 console.log('Admin logged in as:', role);
 
-                // Store token and user data
+                // Store tokens and user data
                 await SecureStore.setItemAsync('userToken', adminData.token);
+                if (adminData.refreshToken) {
+                    await SecureStore.setItemAsync('refreshToken', adminData.refreshToken);
+                }
                 await SecureStore.setItemAsync('userData', JSON.stringify(adminData.admin));
                 await SecureStore.setItemAsync('userType', 'admin');
                 await SecureStore.deleteItemAsync('mpinVerified');
@@ -148,8 +109,11 @@ export default function Login() {
             if (buyerResponse.ok && buyerData.success) {
                 console.log('Buyer Login Success');
 
-                // Store token and user data
+                // Store tokens and user data
                 await SecureStore.setItemAsync('userToken', buyerData.data.token);
+                if (buyerData.data.refreshToken) {
+                    await SecureStore.setItemAsync('refreshToken', buyerData.data.refreshToken);
+                }
                 await SecureStore.setItemAsync('userData', JSON.stringify(buyerData.data.user));
                 await SecureStore.setItemAsync('userType', 'buyer');
                 await SecureStore.deleteItemAsync('mpinVerified');

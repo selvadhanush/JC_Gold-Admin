@@ -78,25 +78,7 @@ export default function SuperAdminDigitalGoldView() {
                 </View>
             </View>
 
-            {/* Navigation Cards */}
             <View className="px-6 mt-6 gap-4">
-                <TouchableOpacity
-                    onPress={() => router.push('/Superadmin/gold_redemptions')}
-                    className="bg-gradient-to-r from-amber-50 to-orange-50 p-5 rounded-2xl border border-amber-200 flex-row items-center justify-between"
-                    activeOpacity={0.7}
-                >
-                    <View className="flex-row items-center flex-1">
-                        <View className="bg-amber-100 w-12 h-12 rounded-xl items-center justify-center mr-4">
-                            <Ionicons name="diamond" size={24} color="#d97706" />
-                        </View>
-                        <View className="flex-1">
-                            <Text className="text-gray-900 font-black text-base mb-1">Gold Redemptions</Text>
-                            <Text className="text-gray-600 text-xs">View redemption requests</Text>
-                        </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={24} color="#9ca3af" />
-                </TouchableOpacity>
-
                 <TouchableOpacity
                     onPress={() => router.push('/Superadmin/gold_rates')}
                     className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-2xl border border-blue-200 flex-row items-center justify-between"

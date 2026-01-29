@@ -83,9 +83,14 @@ exports.login = async (req, res, next) => {
             });
         }
 
-        // Generate token (basic JWT without mpinVerified flag)
+        // Generate tokens
         const token = generateBuyerToken(user._id);
-        
+        const refreshToken = generateRefreshToken(user._id);
+
+        // Store refresh token in DB
+        user.refreshToken = refreshToken;
+        await user.save();
+
         // Check MPIN status
         const mpinSet = user.mpin?.isSet || false;
 
@@ -100,7 +105,8 @@ exports.login = async (req, res, next) => {
                     phoneNumber: user.phoneNumber,
                 },
                 token,
-                mpinRequired: !mpinSet,  // Frontend knows to show set/verify screen
+                refreshToken,
+                mpinRequired: !mpinSet,
                 mpinSet: mpinSet
             },
         });
@@ -109,6 +115,47 @@ exports.login = async (req, res, next) => {
             success: false,
             message: error.message || 'Server error',
         });
+    }
+};
+
+// @desc    Refresh token
+// @route   POST /api/v1/buyer/auth/refresh
+// @access  Public
+exports.refresh = async (req, res, next) => {
+    try {
+        const { refreshToken } = req.body;
+
+        if (!refreshToken) {
+            return res.status(401).json({ success: false, message: 'Refresh token required' });
+        }
+
+        // Verify refresh token
+        const BUYER_JWT_SECRET = process.env.BUYER_JWT_SECRET;
+        const decoded = jwt.verify(refreshToken, BUYER_JWT_SECRET);
+
+        // Find user and verify stored refresh token
+        const user = await User.findById(decoded.id).select('+refreshToken');
+
+        if (!user || user.refreshToken !== refreshToken) {
+            return res.status(401).json({ success: false, message: 'Invalid refresh token' });
+        }
+
+        // Generate new tokens preserving the claims from the old refresh token
+        const extraClaims = { mpinVerified: decoded.mpinVerified || false };
+        const newToken = generateBuyerToken(user._id, extraClaims);
+        const newRefreshToken = generateRefreshToken(user._id, extraClaims);
+
+        // Update stored refresh token
+        user.refreshToken = newRefreshToken;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            token: newToken,
+            refreshToken: newRefreshToken
+        });
+    } catch (error) {
+        res.status(401).json({ success: false, message: 'Session expired. Please login again.' });
     }
 };
 
@@ -141,11 +188,20 @@ exports.getMe = async (req, res, next) => {
 };
 
 // Helper function to generate buyer JWT token
-const generateBuyerToken = (id) => {
+const generateBuyerToken = (id, extraClaims = {}) => {
     const BUYER_JWT_SECRET = process.env.BUYER_JWT_SECRET;
-    const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
-    
-    return jwt.sign({ id }, BUYER_JWT_SECRET, {
+    const JWT_EXPIRE = process.env.ACCESS_TOKEN_EXPIRE || '30m';
+
+    return jwt.sign({ id, ...extraClaims }, BUYER_JWT_SECRET, {
         expiresIn: JWT_EXPIRE,
+    });
+};
+
+const generateRefreshToken = (id, extraClaims = {}) => {
+    const BUYER_JWT_SECRET = process.env.BUYER_JWT_SECRET;
+    const REFRESH_EXPIRE = process.env.REFRESH_TOKEN_EXPIRE || '30d';
+
+    return jwt.sign({ id, ...extraClaims }, BUYER_JWT_SECRET, {
+        expiresIn: REFRESH_EXPIRE,
     });
 };
