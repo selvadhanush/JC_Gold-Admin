@@ -34,7 +34,7 @@ export default function SystemSettings() {
             const response = await fetch(API_ENDPOINTS.SUPER_SETTINGS, { headers });
             const data = await response.json();
             if (data.success) {
-                const keys = ['MAINTENANCE_MODE', 'LOW_STOCK_THRESHOLD', 'ORDER_TIMEOUT_MINUTES', 'MAX_ORDER_AMOUNT'];
+                const keys = ['MAINTENANCE_MODE', 'LOW_STOCK_THRESHOLD', 'ORDER_TIMEOUT_MINUTES', 'MAX_ORDER_AMOUNT', 'SHOP_ADDRESS'];
                 const existingSettings = data.data || [];
 
                 const finalSettings = keys.map(key => {
@@ -246,6 +246,21 @@ export default function SystemSettings() {
                             className="bg-white p-5 rounded-2xl font-black text-black border border-gray-100 text-lg"
                         />
                         <Text className="text-gray-400 text-[9px] font-bold mt-4 uppercase tracking-widest">Global spending limit per transaction for all users.</Text>
+                    </View>
+
+                    <View className="bg-gray-50 rounded-[32px] p-6 mb-8 border border-gray-100">
+                        <Text className="text-black font-black text-base mb-4">Shop Physical Address</Text>
+                        <TextInput
+                            multiline
+                            numberOfLines={4}
+                            value={settings.find(s => s.key === 'SHOP_ADDRESS')?.value?.toString()}
+                            onChangeText={(v) => handleInputChange('SHOP_ADDRESS', v)}
+                            placeholder="Enter showroom address"
+                            placeholderTextColor="#9ca3af"
+                            style={{ textAlignVertical: 'top', minHeight: 120 }}
+                            className="bg-white p-5 rounded-2xl font-black text-black border border-gray-100 text-sm leading-6"
+                        />
+                        <Text className="text-gray-400 text-[9px] font-bold mt-4 uppercase tracking-widest">This address is displayed to buyers in the Gold Wallet section for offline visits.</Text>
                     </View>
 
                     <View className="bg-amber-50 p-6 rounded-[28px] border border-amber-100 flex-row items-start">

@@ -831,8 +831,7 @@ export default function ManageUsers() {
                             { label: 'Gold Vault', icon: 'sparkles', route: '/Superadmin/digital_gold_view', color: '#eab308', bg: '#fefce8', desc: 'Rates & Stock' },
                             { label: 'Audit Logs', icon: 'finger-print', route: '/Superadmin/audit_logs', color: '#f97316', bg: '#fff7ed', desc: 'Security Trace' },
                             { label: 'Settings', icon: 'options', route: '/Superadmin/system_settings', color: '#0ea5e9', bg: '#f0f9ff', desc: 'System Config' },
-                            { label: 'Reports', icon: 'bar-chart', route: '/Superadmin/reports', color: '#8b5cf6', bg: '#f5f3ff', desc: 'Analytics' },
-                            { label: 'Redemptions', icon: 'gift', route: '/Superadmin/gold_redemptions', color: '#ec4899', bg: '#fdf2f8', desc: 'Physical Gold' }
+                            { label: 'Reports', icon: 'bar-chart', route: '/Superadmin/reports', color: '#8b5cf6', bg: '#f5f3ff', desc: 'Analytics' }
                         ].map((item, idx) => (
                             <TouchableOpacity
                                 key={idx}

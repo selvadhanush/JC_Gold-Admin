@@ -52,8 +52,11 @@ export default function Signup() {
             if (response.ok && data.success) {
                 console.log('Registration Success');
 
-                // Store token and user data
+                // Store tokens and user data
                 await SecureStore.setItemAsync('userToken', data.data.token);
+                if (data.data.refreshToken) {
+                    await SecureStore.setItemAsync('refreshToken', data.data.refreshToken);
+                }
                 await SecureStore.setItemAsync('userData', JSON.stringify(data.data.user));
                 await SecureStore.setItemAsync('userType', 'buyer');
 

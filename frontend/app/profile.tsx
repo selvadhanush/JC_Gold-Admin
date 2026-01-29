@@ -10,12 +10,13 @@ import {
     Share,
     Linking,
     Platform,
+    Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { API_ENDPOINTS, getAuthHeaders } from '../api';
+import { API_ENDPOINTS, getAuthHeaders, fetchWithAuth } from '../api';
 import BottomNav from '../components/BottomNav';
 import { Skeleton } from '../components/Skeleton';
 import * as SecureStore from 'expo-secure-store';
@@ -41,6 +42,7 @@ export default function Profile() {
     const [pushNotifications, setPushNotifications] = useState(true);
     const [biometricAuth, setBiometricAuth] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [showBiometricModal, setShowBiometricModal] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
@@ -52,8 +54,7 @@ export default function Profile() {
 
     const fetchKycStatus = async () => {
         try {
-            const headers = await getAuthHeaders();
-            const response = await fetch(API_ENDPOINTS.BUYER_KYC_STATUS, { headers });
+            const response = await fetchWithAuth(API_ENDPOINTS.BUYER_KYC_STATUS);
             const data = await response.json();
             if (data.success) {
                 setKycStatus(data.data.status);
@@ -65,8 +66,7 @@ export default function Profile() {
 
     const fetchBankStatus = async () => {
         try {
-            const headers = await getAuthHeaders();
-            const response = await fetch(API_ENDPOINTS.BUYER_BANK_ACCOUNT, { headers });
+            const response = await fetchWithAuth(API_ENDPOINTS.BUYER_BANK_ACCOUNT);
             const data = await response.json();
             if (data.success && data.data) {
                 setBankStatus(data.data.status);
@@ -80,8 +80,7 @@ export default function Profile() {
 
     const fetchMpinStatus = async () => {
         try {
-            const headers = await getAuthHeaders();
-            const response = await fetch(API_ENDPOINTS.BUYER_MPIN_STATUS, { headers });
+            const response = await fetchWithAuth(API_ENDPOINTS.BUYER_MPIN_STATUS);
             const data = await response.json();
             if (data.success) {
                 setMpinStatus({
@@ -96,8 +95,7 @@ export default function Profile() {
 
     const fetchProfile = async () => {
         try {
-            const headers = await getAuthHeaders();
-            const response = await fetch(API_ENDPOINTS.BUYER_PROFILE, { headers });
+            const response = await fetchWithAuth(API_ENDPOINTS.BUYER_PROFILE);
             const data = await response.json();
             if (data.success) {
                 setUser(data.data);
@@ -286,13 +284,7 @@ export default function Profile() {
                         label="Biometric Login"
                         type="switch"
                         value={biometricAuth}
-                        onPress={() => {
-                            Alert.alert(
-                                'Coming Soon',
-                                'Biometric login will be available in the next version. Stay tuned for faster and more secure authentication!',
-                                [{ text: 'OK' }]
-                            );
-                        }}
+                        onPress={() => setShowBiometricModal(true)}
                     />
                 </View>
 
@@ -328,6 +320,38 @@ export default function Profile() {
                 type="danger"
                 confirmText="Sign Out"
             />
+
+            {/* Premium Biometric Coming Soon Modal */}
+            <Modal
+                visible={showBiometricModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowBiometricModal(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+                    <View style={{ backgroundColor: 'white', borderRadius: 40, width: '100%', padding: 32, alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
+                        {/* Decorative background element */}
+                        <View style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, backgroundColor: '#FFF7ED', borderRadius: 70 }} />
+
+                        <View style={{ width: 80, height: 80, backgroundColor: '#FFF7ED', borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 4, borderColor: 'white', shadowColor: '#f97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 }}>
+                            <Ionicons name="finger-print" size={40} color="#f97316" />
+                        </View>
+
+                        <Text style={{ fontSize: 24, fontWeight: '900', color: '#111827', marginBottom: 12, textAlign: 'center' }}>Coming Soon! ✨</Text>
+
+                        <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 32 }}>
+                            Biometric login is currently under development. You'll soon be able to access your vault using Face ID or Fingerprint for ultimate security.
+                        </Text>
+
+                        <TouchableOpacity
+                            onPress={() => setShowBiometricModal(false)}
+                            style={{ backgroundColor: '#111827', width: '100%', paddingVertical: 18, borderRadius: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
+                        >
+                            <Text style={{ color: 'white', fontWeight: '900', fontSize: 14, textTransform: 'uppercase', letterSpacing: 1 }}>Got it, Thanks!</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

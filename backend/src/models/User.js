@@ -57,6 +57,10 @@ const userSchema = new mongoose.Schema({
         lockedUntil: {
             type: Date
         }
+    },
+    refreshToken: {
+        type: String,
+        select: false
     }
 }, { timestamps: true });
 

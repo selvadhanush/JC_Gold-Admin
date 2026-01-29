@@ -51,3 +51,12 @@ exports.approveTransactionValidation = Joi.object({
         otherwise: Joi.optional()
     })
 });
+
+// Admin: Adjust Vault Validation
+exports.adjustVaultValidation = Joi.object({
+    userId: Joi.string().required(),
+    type: Joi.string().valid('ADD', 'DEDUCT').required(),
+    goldGrams: Joi.number().positive().required(),
+    goldRateAtTime: Joi.number().positive().required(),
+    notes: Joi.string().optional().allow(''),
+});

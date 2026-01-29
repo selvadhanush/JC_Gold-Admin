@@ -7,10 +7,22 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter, useSegments } from 'expo-router';
-import { API_ENDPOINTS, getAuthHeaders } from '../api';
+import { API_ENDPOINTS, getAuthHeaders, fetchWithAuth } from '../api';
 import { useMaintenanceStatus } from '../hooks/useMaintenanceStatus';
 import MaintenanceScreen from '../components/MaintenanceScreen';
 import MaintenanceWarningModal from '../components/MaintenanceWarningModal';
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withTiming,
+    withSequence,
+    withDelay,
+    FadeIn,
+    FadeOut,
+    withSpring
+} from 'react-native-reanimated';
+import { ActivityIndicator } from 'react-native';
 
 const toastConfig = {
     success: (props: any) => (
@@ -172,7 +184,88 @@ export default function RootLayout() {
     const segments = useSegments();
     const appState = useRef(AppState.currentState);
     const [isAppReady, setIsAppReady] = useState(false);
+    const [isSessionVerified, setIsSessionVerified] = useState(false);
+    const [isAuthorized, setIsAuthorized] = useState(false);
     const [userType, setUserType] = useState<string | null>(null);
+
+    // Animation values
+    const pulseValue = useSharedValue(1);
+    const floatValue = useSharedValue(0);
+    const textOpacity = useSharedValue(0);
+    const textScale = useSharedValue(0.9);
+    const shineValue = useSharedValue(-150);
+
+    // Mesh Gradient Values
+    const blob1X = useSharedValue(-20);
+    const blob1Y = useSharedValue(-20);
+    const blob2X = useSharedValue(50);
+    const blob2Y = useSharedValue(50);
+
+    useEffect(() => {
+        // Initial entrance
+        textOpacity.value = withTiming(1, { duration: 1000 });
+        textScale.value = withSpring(1, { damping: 12 });
+
+        // Continuous Loop Animations
+        pulseValue.value = withRepeat(
+            withSpring(1.08, { damping: 12, stiffness: 90 }),
+            -1,
+            true
+        );
+
+        floatValue.value = withRepeat(
+            withSequence(
+                withTiming(-8, { duration: 2500 }),
+                withTiming(0, { duration: 2500 })
+            ),
+            -1,
+            true
+        );
+
+        shineValue.value = withRepeat(
+            withSequence(
+                withTiming(300, { duration: 2000 }),
+                withDelay(1500, withTiming(-150, { duration: 0 }))
+            ),
+            -1
+        );
+
+        // Slow mesh movement
+        blob1X.value = withRepeat(withTiming(40, { duration: 8000 }), -1, true);
+        blob1Y.value = withRepeat(withTiming(30, { duration: 9000 }), -1, true);
+        blob2X.value = withRepeat(withTiming(-40, { duration: 7000 }), -1, true);
+        blob2Y.value = withRepeat(withTiming(-30, { duration: 10000 }), -1, true);
+    }, []);
+
+    const animatedIconStyle = useAnimatedStyle(() => ({
+        transform: [
+            { scale: pulseValue.value },
+            { translateY: floatValue.value }
+        ] as any,
+    }));
+
+    const animatedTextStyle = useAnimatedStyle(() => ({
+        opacity: textOpacity.value,
+        transform: [{ scale: textScale.value }] as any,
+    }));
+
+    const animatedShineStyle = useAnimatedStyle(() => ({
+        transform: [{ translateX: shineValue.value }] as any,
+    }));
+
+    const blob1Style = useAnimatedStyle(() => ({
+        transform: [
+            { translateX: blob1X.value },
+            { translateY: blob1Y.value }
+        ] as any,
+    }));
+
+    const blob2Style = useAnimatedStyle(() => ({
+        transform: [
+            { translateX: blob2X.value },
+            { translateY: blob2Y.value }
+        ] as any,
+    }));
 
     // Get maintenance status for buyers
     const maintenanceStatus = useMaintenanceStatus(userType || undefined);
@@ -186,7 +279,7 @@ export default function RootLayout() {
         return () => {
             subscription.remove();
         };
-    }, [segments]);
+    }, []); // Only run on mount
 
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
         if (
@@ -201,41 +294,155 @@ export default function RootLayout() {
     };
 
     const checkSession = async () => {
+        const startTime = Date.now();
         try {
             const token = await SecureStore.getItemAsync('userToken');
             const userTypeValue = await SecureStore.getItemAsync('userType');
+            const userDataString = await SecureStore.getItemAsync('userData');
             setUserType(userTypeValue);
-            const isMpinVerified = await SecureStore.getItemAsync('mpinVerified');
-            const inPublicGroup = publicRoutes.includes(segments[0] || '');
 
-            if (!token || userTypeValue !== 'buyer' || inPublicGroup) {
+            // Step 1: Session Verification
+            if (!token || !userTypeValue || !userDataString) {
+                setIsSessionVerified(true); // Technically "verified" as guest
+                if (!['login', 'signup'].includes(segments[0])) {
+                    router.replace('/login');
+                }
+                setIsAuthorized(true);
                 return;
             }
 
-            // If logged in and not in public group, check MPIN
-            const headers = await getAuthHeaders();
-            const response = await fetch(API_ENDPOINTS.BUYER_MPIN_STATUS, { headers });
-            const data = await response.json();
+            const userData = JSON.parse(userDataString);
 
-            if (data.success) {
-                if (!data.data.isSet) {
-                    // Force setup if not set
-                    if (segments[0] !== 'mpin_setup') {
-                        router.replace('/mpin_setup');
+            // Live check with fetchWithAuth (handles auto-refresh)
+            try {
+                let response;
+                if (userTypeValue === 'buyer') {
+                    response = await fetchWithAuth(API_ENDPOINTS.BUYER_MPIN_STATUS);
+                } else {
+                    response = await fetchWithAuth(`${API_ENDPOINTS.DASHBOARD}/stats`);
+                }
+
+                if (!response || response.status === 401) {
+                    console.warn('[Auth] Verification failed, logging out...');
+                    await confirmLogout();
+                    return;
+                }
+
+                setIsSessionVerified(true);
+
+                // Step 2: Route Guard / Authorization
+                if (userTypeValue === 'buyer') {
+                    const data = await response.json();
+                    if (data.success) {
+                        if (!data.data.isSet) {
+                            if (segments[0] !== 'mpin_setup') {
+                                router.replace('/mpin_setup');
+                                return; // Wait for redirect
+                            }
+                        } else {
+                            const isMpinVerified = await SecureStore.getItemAsync('mpinVerified');
+                            if (!isMpinVerified) {
+                                if (segments[0] !== 'mpin_verification') {
+                                    router.replace('/mpin_verification');
+                                    return; // Wait for redirect
+                                }
+                            } else {
+                                // Logic for auto-redirecting from login/index to dashboard
+                                if (['login', 'index', undefined].includes(segments[0])) {
+                                    router.replace('/buyer_dashboard' as any);
+                                    return;
+                                }
+                            }
+                        }
                     }
-                } else if (!isMpinVerified) {
-                    // Force verification if set but not verified in this ephemeral run
-                    if (segments[0] !== 'mpin_verification') {
-                        router.replace('/mpin_verification');
+                } else if (userTypeValue === 'admin') {
+                    if (['login', 'index', undefined].includes(segments[0])) {
+                        const role = userData.role;
+                        switch (role) {
+                            case 'SUPER_ADMIN': router.replace('/Superadmin'); break;
+                            case 'PRODUCT_ADMIN': router.replace('/Productadmin'); break;
+                            case 'ORDER_ADMIN': router.replace('/Orderadmin'); break;
+                            case 'FINANCE_ADMIN': router.replace('/Financeadmin'); break;
+                            default: router.replace('/dashboard');
+                        }
+                        return;
                     }
                 }
+
+                setIsAuthorized(true);
+
+            } catch (fetchError) {
+                console.error('[Auth] Verification failed:', fetchError);
+                // Allow proceeding if we have a token (maybe offline), but set guarded. 
+                // For better UX, we'll let it pass if we have base data
+                setIsSessionVerified(true);
+                setIsAuthorized(true);
             }
+
         } catch (error) {
             console.error('Session check error:', error);
+            setIsSessionVerified(true);
+            setIsAuthorized(true);
         } finally {
-            setIsAppReady(true);
+            const checkTime = Date.now() - startTime;
+            const minDuration = 3000;
+            const remainingDelay = Math.max(0, minDuration - checkTime);
+
+            setTimeout(() => {
+                setIsAppReady(true);
+            }, remainingDelay);
         }
     };
+
+    const confirmLogout = async () => {
+        await Promise.all([
+            SecureStore.deleteItemAsync('userToken'),
+            SecureStore.deleteItemAsync('userType'),
+            SecureStore.deleteItemAsync('userData'),
+            SecureStore.deleteItemAsync('mpinVerified'),
+        ]);
+        router.replace('/login');
+    };
+
+    if (!isAppReady || !isSessionVerified || !isAuthorized) {
+        return (
+            <Animated.View
+                exiting={FadeOut.duration(1200)}
+                style={{ flex: 1, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
+            >
+                {/* mesh background blobs */}
+                <Animated.View style={[blob1Style, { position: 'absolute', top: -150, left: -100, width: 400, height: 400, borderRadius: 200, backgroundColor: '#fff7ed', opacity: 0.6 }]} />
+                <Animated.View style={[blob2Style, { position: 'absolute', bottom: -150, right: -100, width: 450, height: 450, borderRadius: 225, backgroundColor: '#fef3c7', opacity: 0.4 }]} />
+
+                <Animated.View style={[animatedTextStyle, { alignItems: 'center', zIndex: 10 }]}>
+                    {/* Main Logo Icon */}
+                    <Animated.View
+                        style={[
+                            { width: 120, height: 120, backgroundColor: '#f97316', borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#f97316', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.3, shadowRadius: 30, elevation: 20, marginBottom: 35 },
+                            animatedIconStyle
+                        ]}
+                    >
+                        <Text style={{ fontSize: 60 }}>✨</Text>
+                        <Animated.View style={[{ position: 'absolute', top: 0, left: 0, width: 40, height: '150%', backgroundColor: 'rgba(255,255,255,0.4)', transform: [{ rotate: '25deg' }] as any }, animatedShineStyle]} />
+                    </Animated.View>
+
+                    {/* Brand Name */}
+                    <Text style={{ fontSize: 36, fontWeight: '900', color: '#111827', letterSpacing: 10, textTransform: 'uppercase' }}>
+                        JC GOLD
+                    </Text>
+
+                    {/* Elegant Accents */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 15 }}>
+                        <View style={{ width: 30, height: 1.5, backgroundColor: '#f97316', opacity: 0.3 }} />
+                        <Text style={{ fontSize: 12, color: '#f97316', fontWeight: '800', marginHorizontal: 15, textTransform: 'uppercase', letterSpacing: 4 }}>
+                            Digital Vault
+                        </Text>
+                        <View style={{ width: 30, height: 1.5, backgroundColor: '#f97316', opacity: 0.3 }} />
+                    </View>
+                </Animated.View>
+            </Animated.View>
+        );
+    }
 
     // Show maintenance screen for buyers if maintenance is active
     // But don't show it if they are on a public route (like login)
@@ -293,7 +500,6 @@ export default function RootLayout() {
                         <Stack.Screen name="schemes" options={{ headerShown: false }} />
                         <Stack.Screen name="kyc_verification" options={{ headerShown: false }} />
                         <Stack.Screen name="transactions_history" options={{ headerShown: false }} />
-                        <Stack.Screen name="redeem_physical_gold" options={{ headerShown: false }} />
                     </Stack>
                     <Toast config={toastConfig} />
 

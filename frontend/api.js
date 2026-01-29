@@ -17,20 +17,18 @@ const getBaseUrl = () => {
         return `http://${ip}:5000`;
     }
 
-    // Fallback for Emulators
-    if (Platform.OS === 'android') return 'http://10.0.2.2:5000';
-
-    // Fallback for iOS Simulator
-    return 'https://jc-gold-admin.onrender.com';
+    // Default development IP - Requested by user
+    return 'http://10.105.228.96:5000';
 };
 
-export const BASE_URL = 'http://10.105.228.96:5000'; // Local Network Backend Connection
+export const BASE_URL = getBaseUrl();
 
 import * as SecureStore from 'expo-secure-store';
 
 export const API_ENDPOINTS = {
     // Admin
     ADMIN_LOGIN: `${BASE_URL}/api/v1/auth/login`,
+    ADMIN_REFRESH: `${BASE_URL}/api/v1/auth/refresh`,
     ADMIN_MANAGEMENT: `${BASE_URL}/api/v1/admin-management`,
     USERS: `${BASE_URL}/api/v1/users`,
     AUDIT: `${BASE_URL}/api/v1/audit`,
@@ -68,6 +66,7 @@ export const API_ENDPOINTS = {
     // Buyer Auth
     BUYER_LOGIN: `${BASE_URL}/api/v1/buyer/auth/login`,
     BUYER_REGISTER: `${BASE_URL}/api/v1/buyer/auth/register`,
+    BUYER_REFRESH: `${BASE_URL}/api/v1/buyer/auth/refresh`,
     BUYER_PROFILE: `${BASE_URL}/api/v1/buyer/profile`,
     BUYER_ADDRESSES: `${BASE_URL}/api/v1/buyer/addresses`,
 
@@ -121,12 +120,14 @@ export const API_ENDPOINTS = {
     BUYER_DIGITAL_GOLD_TRANSACTIONS: `${BASE_URL}/api/v1/buyer/digital-gold/transactions`,
     BUYER_PHYSICAL_GOLD_REDEEM: `${BASE_URL}/api/v1/buyer/digital-gold/redeem`,
     BUYER_PHYSICAL_GOLD_REDEMPTIONS: `${BASE_URL}/api/v1/buyer/digital-gold/redemptions`,
+    BUYER_SHOP_ADDRESS: `${BASE_URL}/api/v1/buyer/digital-gold/shop-address`,
 
     // Digital Gold - Admin
     ADMIN_GOLD_RATE: `${BASE_URL}/api/v1/admin/digital-gold/gold-rate`,
     ADMIN_DIGITAL_GOLD_APPROVE: (id) => `${BASE_URL}/api/v1/admin/digital-gold/approve/${id}`,
     ADMIN_DIGITAL_GOLD_REDEMPTION_APPROVE: (id) => `${BASE_URL}/api/v1/admin/digital-gold/redemption/approve/${id}`,
     ADMIN_DIGITAL_GOLD_DASHBOARD_RATES: `${BASE_URL}/api/v1/admin/digital-gold/dashboard-rates`,
+    ADMIN_DIGITAL_GOLD_ADJUST_VAULT: `${BASE_URL}/api/v1/admin/digital-gold/adjust-vault`,
 
     // Razorpay
     BUYER_RAZORPAY_ORDER: `${BASE_URL}/api/v1/buyer/payments/razorpay-order`,
@@ -170,4 +171,82 @@ export const getAuthHeaders = async () => {
         'Content-Type': 'application/json',
         'Authorization': token ? `Bearer ${token}` : '',
     };
+};
+
+/**
+ * Enhanced fetch wrapper that handles:
+ * 1. Automatic token attachment
+ * 2. 401 Unauthorized -> Silent Token Refresh
+ * 3. 403 Forbidden -> MPIN verification check
+ */
+export const fetchWithAuth = async (url, options = {}) => {
+    let headers = await getAuthHeaders();
+
+    // Allow merging with custom headers (e.g. for FormData)
+    const finalOptions = {
+        ...options,
+        headers: {
+            ...headers,
+            ...(options.headers || {}),
+        },
+    };
+
+    // If Content-Type is explicitly set to null, delete it (useful for FormData)
+    if (options.headers?.['Content-Type'] === null) {
+        delete finalOptions.headers['Content-Type'];
+    }
+
+    try {
+        let response = await fetch(url, finalOptions);
+
+        // 1. Handle 401 (Token Expired) -> Attempt Refresh
+        if (response.status === 401) {
+            console.log('[API] 401 Detected. Attempting silent refresh...');
+            const success = await attemptSilentRefresh();
+            if (success) {
+                // Retry the original request with new token
+                headers = await getAuthHeaders();
+                return await fetch(url, {
+                    ...finalOptions,
+                    headers: { ...finalOptions.headers, ...headers }
+                });
+            }
+        }
+
+        return response;
+    } catch (error) {
+        console.error('[API] Fetch Error:', error);
+        throw error;
+    }
+};
+
+const attemptSilentRefresh = async () => {
+    try {
+        const refreshToken = await SecureStore.getItemAsync('refreshToken');
+        const userType = await SecureStore.getItemAsync('userType');
+
+        if (!refreshToken || !userType) return false;
+
+        const refreshUrl = userType === 'buyer' ? API_ENDPOINTS.BUYER_REFRESH : API_ENDPOINTS.ADMIN_REFRESH;
+
+        const response = await fetch(refreshUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+        });
+
+        const data = await response.json();
+        if (data.success && data.token) {
+            await SecureStore.setItemAsync('userToken', data.token);
+            if (data.refreshToken) {
+                await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+            }
+            console.log('[API] Silent refresh successful');
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('[API] Silent Refresh Failed:', error);
+        return false;
+    }
 };

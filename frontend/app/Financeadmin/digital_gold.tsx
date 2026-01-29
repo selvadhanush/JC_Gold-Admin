@@ -10,16 +10,15 @@ export default function AdminDigitalGold() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [pendingPurchases, setPendingPurchases] = useState<any[]>([]);
-    const [pendingRedemptions, setPendingRedemptions] = useState<any[]>([]);
     const [newRate, setNewRate] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'rates' | 'purchases' | 'redemptions'>('rates');
+    const [activeTab, setActiveTab] = useState<'rates' | 'purchases'>('rates');
     const [ratesHistory, setRatesHistory] = useState<any[]>([]);
 
     // Rejection Modal State
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-    const [rejectionType, setRejectionType] = useState<'PURCHASE' | 'REDEMPTION' | null>(null);
+    const [rejectionType, setRejectionType] = useState<'PURCHASE' | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
 
     const fetchData = useCallback(async () => {
@@ -37,13 +36,7 @@ export default function AdminDigitalGold() {
             const transData = await transRes.json();
             if (transData.success) {
                 setPendingPurchases(transData.data.filter((t: any) => t.type === 'BUY'));
-                // setPendingRedemptions(transData.data.filter((t: any) => t.type !== 'BUY'));
             }
-
-            // 3. Fetch Pending Redemptions
-            const redeemRes = await fetch(`${BASE_URL}/api/v1/admin/digital-gold/redemptions?status=REQUESTED`, { headers });
-            const redeemData = await redeemRes.json();
-            if (redeemData.success) setPendingRedemptions(redeemData.data);
 
         } catch (error) {
             console.error('Error fetching admin digital gold data:', error);
@@ -121,41 +114,11 @@ export default function AdminDigitalGold() {
         }
     };
 
-    const handleApproveRedemption = async (id: string, status: 'APPROVED' | 'REJECTED', reason?: string) => {
-        try {
-            const headers = await getAuthHeaders();
-            const body: any = { status };
-            if (status === 'REJECTED' && reason) {
-                body.rejectionReason = reason;
-            }
+    // handleApproveRedemption removed as redundant
 
-            const response = await fetch(API_ENDPOINTS.ADMIN_DIGITAL_GOLD_REDEMPTION_APPROVE(id), {
-                method: 'PUT',
-                headers,
-                body: JSON.stringify(body)
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                Alert.alert('Success', `Redemption ${status.toLowerCase()}`);
-                fetchData();
-                setRejectModalVisible(false);
-                setRejectionReason('');
-                setSelectedItemId(null);
-                setRejectionType(null);
-            } else {
-                Alert.alert('Error', data.message || 'Failed to process');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'Failed to process');
-        }
-    };
-
-    const initiateRejection = (id: string, type: 'PURCHASE' | 'REDEMPTION') => {
-        console.log('--- INITIATING REJECTION ---', id, type);
-        Alert.alert('Rejection Process', `Opening rejection window for ${type.toLowerCase()}...`);
+    const initiateRejection = (id: string) => {
         setSelectedItemId(id);
-        setRejectionType(type);
+        setRejectionType('PURCHASE');
         setRejectionReason('');
         setRejectModalVisible(true);
     };
@@ -169,8 +132,6 @@ export default function AdminDigitalGold() {
 
         if (rejectionType === 'PURCHASE') {
             handleApprovePurchase(selectedItemId, 'REJECTED', rejectionReason);
-        } else {
-            handleApproveRedemption(selectedItemId, 'REJECTED', rejectionReason);
         }
     };
 
@@ -183,7 +144,7 @@ export default function AdminDigitalGold() {
             }} />
 
             <View className="flex-row border-b border-gray-100">
-                {(['rates', 'purchases', 'redemptions'] as const).map(tab => (
+                {(['rates', 'purchases'] as const).map(tab => (
                     <TouchableOpacity
                         key={tab}
                         onPress={() => setActiveTab(tab)}
@@ -265,52 +226,7 @@ export default function AdminDigitalGold() {
                                             <Text className="text-white font-black text-[10px] uppercase">Approve</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
-                                            onPress={() => initiateRejection(item._id, 'PURCHASE')}
-                                            className="flex-1 bg-red-600 py-3 rounded-xl items-center shadow-sm"
-                                        >
-                                            <Text className="text-white font-black text-[10px] uppercase">Reject</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            ))
-                        )}
-                    </View>
-                )}
-
-                {activeTab === 'redemptions' && (
-                    <View>
-                        <Text className="text-black font-black text-lg mb-4">Redemption Requests</Text>
-                        {pendingRedemptions.length === 0 ? (
-                            <Text className="text-gray-400 text-center py-10">No pending redemption requests</Text>
-                        ) : (
-                            pendingRedemptions.map(item => (
-                                <View key={item._id} className="bg-gray-50 p-5 rounded-[24px] mb-4 border border-gray-100">
-                                    <View className="flex-row justify-between mb-2">
-                                        <Text className="text-gray-900 font-black uppercase tracking-widest">{item.redeemType}</Text>
-                                        <Text className="text-amber-600 font-black">{item.goldGrams}g</Text>
-                                    </View>
-                                    <Text className="text-gray-500 text-[10px] mb-1">Value: ₹{item.equivalentAmount}</Text>
-                                    <Text className="text-gray-400 text-[10px] mb-2">User: {item.user?.name || item.user}</Text>
-
-                                    {item.redeemType === 'CASH' && item.bankDetails && (
-                                        <View className="bg-white p-3 rounded-xl mb-4 border border-emerald-50">
-                                            <Text className="text-emerald-800 text-[9px] font-black uppercase mb-2">Payout Bank Details</Text>
-                                            <Text className="text-gray-900 text-[11px] font-bold">{item.bankDetails.bankName}</Text>
-                                            <Text className="text-gray-600 text-[10px]">{item.bankDetails.accountNumber}</Text>
-                                            <Text className="text-gray-600 text-[10px]">{item.bankDetails.ifscCode}</Text>
-                                            <Text className="text-gray-600 text-[10px]">{item.bankDetails.accountHolderName}</Text>
-                                        </View>
-                                    )}
-
-                                    <View className="flex-row gap-x-2">
-                                        <TouchableOpacity
-                                            onPress={() => handleApproveRedemption(item._id, 'APPROVED')}
-                                            className="flex-1 bg-emerald-600 py-3 rounded-xl items-center"
-                                        >
-                                            <Text className="text-white font-black text-[10px] uppercase">Approve</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={() => initiateRejection(item._id, 'REDEMPTION')}
+                                            onPress={() => initiateRejection(item._id)}
                                             className="flex-1 bg-red-600 py-3 rounded-xl items-center shadow-sm"
                                         >
                                             <Text className="text-white font-black text-[10px] uppercase">Reject</Text>
@@ -333,7 +249,7 @@ export default function AdminDigitalGold() {
                 <View className="flex-1 justify-center items-center bg-black/50 px-6">
                     <View className="bg-white w-full p-6 rounded-3xl shadow-lg">
                         <Text className="text-xl font-black text-gray-900 mb-2">
-                            Reject {rejectionType === 'PURCHASE' ? 'Gold Purchase' : 'Redemption Request'}
+                            Reject Gold Purchase
                         </Text>
                         <Text className="text-gray-500 text-xs mb-4">Please provide a reason for rejection:</Text>
 
@@ -363,6 +279,6 @@ export default function AdminDigitalGold() {
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }

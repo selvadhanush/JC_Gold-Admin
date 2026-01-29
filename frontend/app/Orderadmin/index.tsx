@@ -389,6 +389,28 @@ export default function OrderAdminDashboard() {
                                 </View>
                                 <Ionicons name="arrow-forward-circle" size={32} color="#d97706" />
                             </TouchableOpacity>
+
+                            {/* User Management Hub */}
+                            <TouchableOpacity
+                                onPress={() => router.push('/Superadmin/manage_users')}
+                                className="bg-gray-900 rounded-[32px] p-6 mb-4 shadow-xl w-full flex-row items-center border border-gray-800"
+                            >
+                                <View className="bg-white/10 w-14 h-14 rounded-2xl items-center justify-center">
+                                    <Ionicons name="people-sharp" size={28} color="#fbbf24" />
+                                </View>
+                                <View className="ml-5 flex-1">
+                                    <View className="flex-row items-center">
+                                        <Text className="text-white font-black text-lg">User Management</Text>
+                                        <View className="bg-yellow-500/20 px-2 py-0.5 rounded-full ml-2">
+                                            <Text className="text-yellow-500 text-[8px] font-black uppercase">Admin Hub</Text>
+                                        </View>
+                                    </View>
+                                    <Text className="text-gray-400 text-xs font-medium">Manage vaults, KYC & accounts</Text>
+                                </View>
+                                <View className="bg-white/10 w-10 h-10 rounded-full items-center justify-center">
+                                    <Ionicons name="chevron-forward" size={20} color="white" />
+                                </View>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -553,6 +575,6 @@ export default function OrderAdminDashboard() {
                 {/* Bottom Padding for Nav */}
                 <View className="h-32" />
             </ScrollView>
-        </View>
+        </View >
     );
 }

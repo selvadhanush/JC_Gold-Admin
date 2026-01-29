@@ -4,7 +4,8 @@ const {
     requestRedemption,
     getWalletBalance,
     getTransactions,
-    getRedemptionRequests
+    getRedemptionRequests,
+    getShopAddress
 } = require('../../controllers/buyer/digitalGold.controller');
 const {
     getLots,
@@ -17,8 +18,11 @@ const { requireKycApproval } = require('../../middlewares/requireKyc.middleware'
 
 const router = express.Router();
 
-// All routes require buyer authentication and MPIN verification
+// Routes that require buyer authentication but NOT necessarily MPIN/KYC for basic info
 router.use(protectBuyer);
+router.get('/shop-address', getShopAddress);
+
+// Routes that require MPIN verification
 router.use(requireMpinVerified);
 
 router.post('/buy', buyDigitalGold);
